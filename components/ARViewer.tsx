@@ -127,10 +127,15 @@ export default function ARViewer({ objects }: { objects: StageObject[] }) {
   arjs="trackingMethod: best; sourceType: webcam; sourceWidth:1280; sourceHeight:720; debugUIEnabled:false;"
 >
   <a-assets>
-    ${Object.values(modelMap)
-      .map((m) => `<a-asset-item id="${m.src}" src="${m.src}"></a-asset-item>`)
+    ${(objects || [])
+      .filter(o => modelMap[o.name]) // only used models
+      .map(o => {
+        const m = modelMap[o.name];
+        return `<a-asset-item id="${m.src}" src="${m.src}"></a-asset-item>`;
+      })
       .join("\n")}
   </a-assets>
+
 
   <a-marker preset="hiro" emitevents="true" id="hiroMarker">
     <a-entity id="markerObjects">
