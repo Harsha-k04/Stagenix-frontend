@@ -1,0 +1,264 @@
+"use client";
+
+import { useEffect, useRef } from "react";
+import * as THREE from "three";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+
+interface StageObject {
+  name: string;
+  position: [number, number, number];
+  rotation: [number, number, number];
+}
+
+interface Canvas3DProps {
+  objects: StageObject[];
+  viewMode: "perspective" | "ar" | "vr";
+}
+
+export default function Canvas3D({ objects, viewMode }: Canvas3DProps) {
+  const mountRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!mountRef.current) return;
+
+    // 🧱 Scene
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x151515);
+
+    // 🎥 Camera
+    const camera = new THREE.PerspectiveCamera(
+      60,
+      mountRef.current.clientWidth / mountRef.current.clientHeight,
+      0.1,
+      100
+    );
+    camera.position.set(0, 3, 6);
+
+    // ⚙️ Renderer
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(mountRef.current.clientWidth, mountRef.current.clientHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.shadowMap.enabled = true;
+
+    /* 🔥 ADD THIS (Tone mapping + sRGB fix — TS compatible) */
+    (renderer as any).toneMapping = THREE.ACESFilmicToneMapping;
+    (renderer as any).toneMappingExposure = 1.1;
+
+    if ((THREE as any).sRGBEncoding) {
+      (renderer as any).outputEncoding = (THREE as any).sRGBEncoding;
+    } else if ((THREE as any).SRGBColorSpace) {
+      (renderer as any).outputColorSpace = (THREE as any).SRGBColorSpace;
+    }
+
+    mountRef.current.appendChild(renderer.domElement);
+
+    // 🎮 Orbit Controls
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.target.set(0, 1, 0);
+
+    // 💡 Lighting
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 1.2);
+    hemiLight.position.set(0, 20, 0);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+    dirLight.position.set(5, 10, 7);
+    dirLight.castShadow = true;
+    scene.add(hemiLight, dirLight);
+
+    /* 🌟 ADD THIS (extra environment light for GLTF correctness) */
+    const envLight = new THREE.HemisphereLight(0xffffff, 0x222222, 0.8);
+    scene.add(envLight);
+
+    // 🟫 Ground plane
+    const plane = new THREE.Mesh(
+      new THREE.PlaneGeometry(20, 20),
+      new THREE.MeshStandardMaterial({ color: 0x222222 })
+    );
+    plane.rotation.x = -Math.PI / 2;
+    plane.receiveShadow = true;
+    scene.add(plane);
+
+    // 🔵 Debug helpers
+    const gridHelper = new THREE.GridHelper(20, 40, 0x888888, 0x444444);
+    const axesHelper = new THREE.AxesHelper(3);
+    scene.add(gridHelper, axesHelper);
+
+    // 🟨 Center cube
+    const debugCube = new THREE.Mesh(
+      new THREE.BoxGeometry(0.6, 0.6, 0.6),
+      new THREE.MeshStandardMaterial({ color: 0xffcc00 })
+    );
+    debugCube.position.set(0, 0.3, 0);
+    scene.add(debugCube);
+
+    // 🧩 Loader
+    const loader = new GLTFLoader();
+    const loadedObjects: THREE.Object3D[] = [];
+    const modelPositions: THREE.Vector3[] = [];
+
+    const toLoad = (objects || [])
+      .map((obj) => {
+        let modelPath = "";
+        let scale = 2;
+
+        if (obj.name === "pottedplant") {
+          modelPath = "/assets/pottedplant/scene.glb";
+          scale = 0.8;
+        } else if (obj.name === "vase") {
+          modelPath = "/assets/vase/scene.glb";
+          scale = 1.8;
+        } else if (obj.name === "wedding") {
+          modelPath = "/assets/wedding_stage/wedding_stage_shape.glb";
+          scale = 1.8;
+        } else if (obj.name === "stage") {
+          modelPath = "/assets/stage/stage.glb";
+          scale = 1.8;
+        }
+
+        return { source: obj, modelPath, scale };
+      })
+      .filter((entry) => entry.modelPath);
+
+    let loadedCount = 0;
+    const expectedCount = toLoad.length;
+
+    toLoad.forEach(({ source, modelPath, scale }) => {
+      const [px, py, pz] = source.position;
+      const [rx, ry, rz] = source.rotation;
+
+      loader.load(
+        modelPath,
+
+        // ---------------- START LOAD CALLBACK ----------------
+        (gltf) => {
+          console.log("🔵 MODEL LOADED:", modelPath);
+          console.log("🔵 Scene object:", gltf.scene);
+          console.log("🔵 Scene children:", gltf.scene.children);
+          console.log("🔵 Starting processing…");
+
+          console.log("STEP 1: Apply scale + rotations");
+          const model = gltf.scene;
+          model.scale.set(scale, scale, scale);
+
+          // --- FIX START ---
+          const box = new THREE.Box3().setFromObject(model);
+          const center = new THREE.Vector3();
+          box.getCenter(center);
+
+          model.position.y -= box.min.y; // Sit on ground
+          // --- FIX END ---
+
+          model.position.x += px * 3;
+          model.position.z += pz * 3;
+          model.rotation.set(rx, ry, rz);
+
+          console.log("STEP 2: Enable shadows on meshes");
+          model.traverse((child) => {
+            const mesh = child as THREE.Mesh;
+            if (mesh.isMesh) {
+              mesh.castShadow = true;
+              mesh.receiveShadow = true;
+            }
+          });
+
+          console.log("STEP 3: Adding model to scene…");
+          scene.add(model);
+
+          loadedObjects.push(model);
+          modelPositions.push(new THREE.Vector3(px * 3, py, pz * 3));
+          loadedCount += 1;
+          console.log(`STEP 4: Model added (${loadedCount}/${expectedCount})`);
+
+          if (loadedCount === expectedCount) {
+            console.log("STEP 5: Centering camera on loaded models…");
+
+            const avg = new THREE.Vector3();
+            modelPositions.forEach((p) => avg.add(p));
+            avg.divideScalar(modelPositions.length);
+
+            console.log("STEP 6: Camera target:", avg);
+            controls.target.copy(avg);
+            camera.lookAt(avg);
+
+            console.log("✅ Finished all model loading!");
+          }
+        },
+
+        undefined,
+
+        (err) => {
+          loadedCount += 1;
+          console.error("❌ Model load error:", modelPath, err);
+        }
+      );
+    });
+
+    // 🌀 Animation
+    let rafId = 0;
+    const animate = () => {
+      rafId = requestAnimationFrame(animate);
+      controls.update();
+      debugCube.rotation.y += 0.01;
+      renderer.render(scene, camera);
+    };
+    animate();
+
+    // 📏 Resize
+    const handleResize = () => {
+      if (!mountRef.current) return;
+      const { clientWidth, clientHeight } = mountRef.current;
+      camera.aspect = clientWidth / clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(clientWidth, clientHeight);
+    };
+
+    window.addEventListener("resize", handleResize);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      cancelAnimationFrame(rafId);
+
+      loadedObjects.forEach((obj) => {
+        scene.remove(obj);
+        obj.traverse((child) => {
+          const mesh = child as THREE.Mesh;
+          if (mesh.isMesh) {
+            if (mesh.geometry) mesh.geometry.dispose();
+            if (Array.isArray(mesh.material)) {
+              mesh.material.forEach((m) => {
+                if ((m as THREE.Material).dispose) (m as THREE.Material).dispose();
+              });
+            } else if (mesh.material) {
+              (mesh.material as THREE.Material).dispose();
+            }
+          }
+        });
+      });
+
+      gridHelper.geometry.dispose();
+      (gridHelper.material as THREE.Material).dispose();
+      plane.geometry.dispose();
+      (plane.material as THREE.Material).dispose();
+      debugCube.geometry.dispose();
+      (debugCube.material as THREE.Material).dispose();
+      axesHelper.geometry.dispose();
+      (axesHelper.material as THREE.Material).dispose();
+
+      if (mountRef.current && renderer.domElement.parentElement === mountRef.current) {
+        mountRef.current.removeChild(renderer.domElement);
+      }
+
+      renderer.dispose();
+    };
+  }, [objects, viewMode]);
+
+  return (
+    <div
+      ref={mountRef}
+      className="w-full h-[80vh] bg-black rounded-lg border border-primary/20 shadow-inner overflow-visible"
+    />
+  );
+}

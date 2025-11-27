@@ -1,0 +1,18 @@
+node_modules/
+.next/
+dist/
+out/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# Ignore local uploads
+public/uploads/
+
+# Ignore large 3D models (you will re-upload properly later)
+public/assets/wedding_stage/wedding_stage_shape.glb
+public/assets/wedding_stage/wedding_stage_textured.glb
+
+# Ignore lockfiles if not required
+pnpm-lock.yaml
