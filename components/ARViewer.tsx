@@ -18,7 +18,7 @@ export default function ARViewer({ objects }: { objects: StageObject[] }) {
       iframeRef.current.contentWindow?.document;
     if (!doc) return;
 
-    // ✅ FIX: use SAME SCALE values as Canvas3D
+    // Model map (unchanged except scale fixes)
     const modelMap: Record<string, { src: string; scale: string }> = {
       pottedplant: {
         src: "/assets/pottedplant/scene.glb",
@@ -26,11 +26,11 @@ export default function ARViewer({ objects }: { objects: StageObject[] }) {
       },
       vase: {
         src: "/assets/vase/scene.glb",
-        scale: "1.8 1.8 1.8", // was 1.2
+        scale: "1.8 1.8 1.8",
       },
       wedding: {
         src: "/assets/wedding_stage/wedding_stage_shape.glb",
-        scale: "1.8 1.8 1.8", // was 1.2
+        scale: "1.8 1.8 1.8",
       },
       stage: {
         src: "/assets/stage/stage.glb",
@@ -44,7 +44,6 @@ export default function ARViewer({ objects }: { objects: StageObject[] }) {
       .map((o, i) => {
         const map = modelMap[o.name];
 
-        // ✅ FIX: remove fallback ("|| 0")
         const pos = `${o.position[0]} ${o.position[1]} ${o.position[2]}`;
         const rot = `${o.rotation[0]} ${o.rotation[1]} ${o.rotation[2]}`;
 
@@ -60,10 +59,10 @@ export default function ARViewer({ objects }: { objects: StageObject[] }) {
       .join("\n");
 
     const fallbackHTML = `<a-entity position="0 0 -1">
-      <a-text value="No compatible models found" color="#fff" align="center" position="0 0 0"></a-text>
+      <a-text value="No compatible models found" color="#fff" align="center"></a-text>
     </a-entity>`;
 
-    // Build AR iframe document
+    // Build the full AR iframe document
     doc.open();
     doc.write(`<!doctype html>
 <html lang="en">
@@ -72,6 +71,7 @@ export default function ARViewer({ objects }: { objects: StageObject[] }) {
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Stagenix AR</title>
 
+<!-- A-Frame + AR.js -->
 <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.3.2/aframe/build/aframe-ar.min.js"></script>
 
@@ -83,7 +83,18 @@ export default function ARViewer({ objects }: { objects: StageObject[] }) {
 </script>
 
 <style>
-  html,body { margin:0; padding:0; height:100%; background:#000; overflow:hidden; }
+  html, body {
+    margin:0;
+    padding:0;
+    width:100%;
+    height:100%;
+    background:#000;
+    overflow:hidden;
+  }
+  a-scene {
+    width:100vw;
+    height:100vh;
+  }
   #hint {
     position: absolute;
     z-index: 9999;
@@ -96,54 +107,74 @@ export default function ARViewer({ objects }: { objects: StageObject[] }) {
     font-size: 13px;
     font-family: system-ui, sans-serif;
   }
-  #hiroWrap { position: absolute; right: 12px; bottom: 12px; z-index:9999; background: rgba(255,255,255,0.9); padding:6px; border-radius:6px;}
-  #hiroWrap img{ width: 86px; height:86px; display:block; }
+  #hiroWrap { 
+    position: absolute;
+    right: 12px;
+    bottom: 12px;
+    z-index:9999;
+    background: rgba(255,255,255,0.9);
+    padding:6px;
+    border-radius:6px;
+  }
+  #hiroWrap img { width: 86px; height:86px; }
 </style>
 </head>
 <body>
-  <div id="hint">Point camera at the Hiro marker</div>
-  <div id="hiroWrap">
-    <div style="font-size:11px; text-align:center; margin-bottom:4px;">Hiro marker</div>
-    <img src="https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/images/hiro.png" />
-  </div>
 
-  <a-scene
-    embedded
-    vr-mode-ui="enabled: false"
-    renderer="logarithmicDepthBuffer: true;"
-    arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;"
-  >
-    <a-assets>
-      ${Object.values(modelMap)
-        .map(
-          (m) =>
-            `<a-asset-item id="${m.src}" src="${m.src}"></a-asset-item>`
-        )
-        .join("\n")}
-    </a-assets>
+<div id="hint">Point camera at the Hiro marker</div>
 
-    <a-marker preset="hiro" emitevents="true" id="hiroMarker">
-      <a-entity id="markerObjects">
-        ${entityStrings || fallbackHTML}
-      </a-entity>
-    </a-marker>
+<div id="hiroWrap">
+  <div style="font-size:11px; text-align:center; margin-bottom:4px;">Hiro marker</div>
+  <img src="https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/images/hiro.png" />
+</div>
 
-    <a-entity camera></a-entity>
-  </a-scene>
+<a-scene
+  embedded
+  vr-mode-ui="enabled: false"
+  renderer="logarithmicDepthBuffer: true;"
+  arjs="trackingMethod: best; sourceType: webcam; sourceWidth:1280; sourceHeight:720; debugUIEnabled:false;"
+>
+  <a-assets>
+    ${Object.values(modelMap)
+      .map(
+        (m) =>
+          `<a-asset-item id="${m.src}" src="${m.src}"></a-asset-item>`
+      )
+      .join("\n")}
+  </a-assets>
 
-  <script>
-    navigator.mediaDevices?.getUserMedia({ video: true })
-      .then(s => { s.getTracks().forEach(t=>t.stop()); showHint('Point camera at the Hiro marker'); })
-      .catch(e => { showHint('Camera blocked. Enable camera & reload.'); });
+  <a-marker preset="hiro" emitevents="true" id="hiroMarker">
+    <a-entity id="markerObjects">
+      ${entityStrings || fallbackHTML}
+    </a-entity>
+  </a-marker>
 
-    setTimeout(() => {
-      const marker = document.getElementById('hiroMarker');
-      if (marker) {
-        marker.addEventListener('markerFound', () => document.getElementById('hint').innerText = 'Marker detected');
-        marker.addEventListener('markerLost', () => document.getElementById('hint').innerText = 'Marker lost');
-      }
-    }, 1500);
-  </script>
+  <a-entity camera></a-entity>
+</a-scene>
+
+<script>
+  navigator.mediaDevices?.getUserMedia({ video: true })
+    .then(s => { 
+      s.getTracks().forEach(t=>t.stop());
+      showHint('Point camera at the Hiro marker');
+    })
+    .catch(e => { 
+      showHint('Camera blocked. Enable camera & reload.');
+    });
+
+  setTimeout(() => {
+    const marker = document.getElementById('hiroMarker');
+    if (marker) {
+      marker.addEventListener('markerFound', () =>
+        document.getElementById('hint').innerText = 'Marker detected'
+      );
+      marker.addEventListener('markerLost', () =>
+        document.getElementById('hint').innerText = 'Marker lost'
+      );
+    }
+  }, 1500);
+</script>
+
 </body>
 </html>`);
     doc.close();
@@ -154,8 +185,10 @@ export default function ARViewer({ objects }: { objects: StageObject[] }) {
       ref={iframeRef}
       title="AR Viewer"
       className="w-full h-full border-none rounded-lg"
-      allow="camera; microphone; accelerometer; gyroscope; encrypted-media"
+      allow="camera; microphone; accelerometer; gyroscope; encrypted-media; xr-spatial-tracking; fullscreen"
+      allowFullScreen
       referrerPolicy="no-referrer"
+      sandbox="allow-scripts allow-same-origin allow-forms allow-pointer-lock allow-modals"
     />
   );
 }
