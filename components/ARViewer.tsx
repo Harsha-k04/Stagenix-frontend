@@ -18,24 +18,15 @@ export default function ARViewer({ objects }: { objects: StageObject[] }) {
       iframeRef.current.contentWindow?.document;
     if (!doc) return;
 
-    // Model map (unchanged except scale fixes)
+    // Model map (scales matched to Canvas3D)
     const modelMap: Record<string, { src: string; scale: string }> = {
-      pottedplant: {
-        src: "/assets/pottedplant/scene.glb",
-        scale: "0.8 0.8 0.8",
-      },
-      vase: {
-        src: "/assets/vase/scene.glb",
-        scale: "1.8 1.8 1.8",
-      },
+      pottedplant: { src: "/assets/pottedplant/scene.glb", scale: "0.8 0.8 0.8" },
+      vase: { src: "/assets/vase/scene.glb", scale: "1.8 1.8 1.8" },
       wedding: {
         src: "/assets/wedding_stage/wedding_stage_shape.glb",
         scale: "1.8 1.8 1.8",
       },
-      stage: {
-        src: "/assets/stage/stage.glb",
-        scale: "1.8 1.8 1.8",
-      },
+      stage: { src: "/assets/stage/stage.glb", scale: "1.8 1.8 1.8" },
     };
 
     // Build A-Frame entities
@@ -43,7 +34,6 @@ export default function ARViewer({ objects }: { objects: StageObject[] }) {
       .filter((o) => modelMap[o.name])
       .map((o, i) => {
         const map = modelMap[o.name];
-
         const pos = `${o.position[0]} ${o.position[1]} ${o.position[2]}`;
         const rot = `${o.rotation[0]} ${o.rotation[1]} ${o.rotation[2]}`;
 
@@ -62,7 +52,7 @@ export default function ARViewer({ objects }: { objects: StageObject[] }) {
       <a-text value="No compatible models found" color="#fff" align="center"></a-text>
     </a-entity>`;
 
-    // Build the full AR iframe document
+    // Build the full AR iframe document (transparent background + alpha renderer)
     doc.open();
     doc.write(`<!doctype html>
 <html lang="en">
@@ -88,12 +78,13 @@ export default function ARViewer({ objects }: { objects: StageObject[] }) {
     padding:0;
     width:100%;
     height:100%;
-    background:#000;
+    background:transparent; /* transparent so parent won't show */
     overflow:hidden;
   }
   a-scene {
     width:100vw;
     height:100vh;
+    background: transparent !important; /* ensure scene itself is transparent */
   }
   #hint {
     position: absolute;
@@ -116,7 +107,7 @@ export default function ARViewer({ objects }: { objects: StageObject[] }) {
     padding:6px;
     border-radius:6px;
   }
-  #hiroWrap img { width: 86px; height:86px; }
+  #hiroWrap img { width: 86px; height:86px; display:block; }
 </style>
 </head>
 <body>
@@ -128,18 +119,16 @@ export default function ARViewer({ objects }: { objects: StageObject[] }) {
   <img src="https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/images/hiro.png" />
 </div>
 
+<!-- NOTE: renderer includes alpha:true so camera/video can show behind WebGL -->
 <a-scene
   embedded
   vr-mode-ui="enabled: false"
-  renderer="logarithmicDepthBuffer: true;"
+  renderer="alpha: true; logarithmicDepthBuffer: true;"
   arjs="trackingMethod: best; sourceType: webcam; sourceWidth:1280; sourceHeight:720; debugUIEnabled:false;"
 >
   <a-assets>
     ${Object.values(modelMap)
-      .map(
-        (m) =>
-          `<a-asset-item id="${m.src}" src="${m.src}"></a-asset-item>`
-      )
+      .map((m) => `<a-asset-item id="${m.src}" src="${m.src}"></a-asset-item>`)
       .join("\n")}
   </a-assets>
 
@@ -153,14 +142,10 @@ export default function ARViewer({ objects }: { objects: StageObject[] }) {
 </a-scene>
 
 <script>
+  // quick probe for camera permission, will stop the probe stream immediately
   navigator.mediaDevices?.getUserMedia({ video: true })
-    .then(s => { 
-      s.getTracks().forEach(t=>t.stop());
-      showHint('Point camera at the Hiro marker');
-    })
-    .catch(e => { 
-      showHint('Camera blocked. Enable camera & reload.');
-    });
+    .then(s => { s.getTracks().forEach(t=>t.stop()); showHint('Point camera at the Hiro marker'); })
+    .catch(e => { showHint('Camera blocked. Enable camera & reload.'); });
 
   setTimeout(() => {
     const marker = document.getElementById('hiroMarker');
@@ -185,7 +170,7 @@ export default function ARViewer({ objects }: { objects: StageObject[] }) {
       ref={iframeRef}
       title="AR Viewer"
       className="w-full h-full border-none rounded-lg"
-      allow="camera; microphone; accelerometer; gyroscope; encrypted-media; xr-spatial-tracking; fullscreen"
+      allow="camera; microphone; accelerometer; gyroscope; encrypted-media; xr-spatial-tracking; autoplay"
       allowFullScreen
       referrerPolicy="no-referrer"
       sandbox="allow-scripts allow-same-origin allow-forms allow-pointer-lock allow-modals"
