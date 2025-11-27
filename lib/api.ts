@@ -1,4 +1,4 @@
-export const API_BASE_URL = "http://localhost:5000";
+export const API_BASE_URL = "https://stagenix-backend.onrender.com";
 
 export async function sendPrompt(prompt: string) {
   const formData = new FormData();
