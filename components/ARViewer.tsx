@@ -20,13 +20,14 @@ export default function ARViewer({ objects }: { objects: StageObject[] }) {
 
     // Model map (scales matched to Canvas3D)
     const modelMap: Record<string, { src: string; scale: string }> = {
-      pottedplant: { src: "/assets/pottedplant/scene.glb", scale: "0.8 0.8 0.8" },
-      vase: { src: "/assets/vase/scene.glb", scale: "1.8 1.8 1.8" },
+      pottedplant: { src: "/assets/pottedplant/scene.glb", scale: "0.05 0.05 0.05",position="0 0.1 0" },
+      vase: { src: "/assets/vase/scene.glb", scale: "0.05 0.05 0.05", position="0 0.1 0" },
       wedding: {
         src: "https://stagenix-backend.onrender.com/model/perfect_stage_corrected.glb",
-        scale: "1.8 1.8 1.8",
+        scale: "0.05 0.05 0.05",
+        position="0 0.1 0"
       },
-      stage: { src: "/assets/stage/stage.glb", scale: "1.8 1.8 1.8" },
+      stage: { src: "/assets/stage/stage.glb", scale: "0.05 0.05 0.05", position="0 0.1 0" },
     };
 
     // Build A-Frame entities
@@ -123,7 +124,7 @@ export default function ARViewer({ objects }: { objects: StageObject[] }) {
 <a-scene
   embedded
   vr-mode-ui="enabled: true"
-  renderer="antialias: true; colorManagement: true; exposure: 1.5;"
+  renderer="antialias: true; exposure: 2.2;"
   arjs="trackingMethod: best; sourceType: webcam; sourceWidth:1280; sourceHeight:720; debugUIEnabled:false;"
 >
   <a-assets>
