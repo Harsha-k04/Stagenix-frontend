@@ -13,6 +13,7 @@ export default function Home() {
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
+    if (/Mobi|Android/i.test(navigator.userAgent)) return;
     const handleMouseMove = (e: MouseEvent) => {
       if (!containerRef.current) return
 
