@@ -360,6 +360,15 @@
 .animate-fade-in {
   animation: fade-in 0.8s ease-out;
 }
+html, body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
 
 .animate-shimmer {
   background: linear-gradient(90deg, transparent, rgba(198, 166, 100, 0.3), transparent);
