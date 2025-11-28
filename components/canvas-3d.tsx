@@ -108,7 +108,7 @@ export default function Canvas3D({ objects, viewMode }: Canvas3DProps) {
           modelPath = "/assets/vase/scene.glb";
           scale = 1.8;
         } else if (obj.name === "wedding") {
-          modelPath = "https://github.com/Harsha-k04/Stagenix-backend/releases/download/v1.0/perfect_stage_corrected.glb";
+          modelPath = "https://stagenix-backend.onrender.com/model/perfect_stage_corrected.glb";
           scale = 1.8;
         } else if (obj.name === "stage") {
           modelPath = "/assets/stage/stage.glb";
