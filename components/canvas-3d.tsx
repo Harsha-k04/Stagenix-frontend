@@ -101,6 +101,7 @@ export default function Canvas3D({ objects, viewMode }: Canvas3DProps) {
     scene.add(plane);
 
     // Helpers
+
     const gridHelper = new THREE.GridHelper(20, 40, 0x888888, 0x444444);
     const axesHelper = new THREE.AxesHelper(3);
     scene.add(gridHelper, axesHelper);
@@ -111,6 +112,15 @@ export default function Canvas3D({ objects, viewMode }: Canvas3DProps) {
     );
     debugCube.position.set(0, 0.3, 0);
     scene.add(debugCube);
+
+// 🟦 Hide helpers when objects exist (after generation)
+    if (objects.length > 0) {
+      gridHelper.visible = false;
+      axesHelper.visible = false;
+      debugCube.visible = false;
+      plane.visible = false; // optional: remove ground
+    }
+
 
     // Loader
     const loader = new GLTFLoader();
