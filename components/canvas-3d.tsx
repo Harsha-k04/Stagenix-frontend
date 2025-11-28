@@ -43,9 +43,8 @@ export default function Canvas3D({ objects, viewMode }: Canvas3DProps) {
 
     // --- SAFE COLORSPACE FIX ---
     (renderer as any).toneMapping = THREE.ACESFilmicToneMapping;
-    (renderer as any).toneMappingExposure = 1.1;
+    (renderer as any).toneMappingExposure = 1.3;
 
-    // Only set SRGBColorSpace (modern THREE)
     if ((THREE as any).SRGBColorSpace) {
       (renderer as any).outputColorSpace = (THREE as any).SRGBColorSpace;
     }
@@ -58,7 +57,33 @@ export default function Canvas3D({ objects, viewMode }: Canvas3DProps) {
     controls.dampingFactor = 0.05;
     controls.target.set(0, 1, 0);
 
-    // 💡 Lighting
+    // --------------------------------------------------
+    // ⭐⭐⭐ ADD THESE — GLTF VIEWER STYLE LIGHT SETUP ⭐⭐⭐
+    // --------------------------------------------------
+
+    // ENV MAP (much brighter than hemisphere)
+    const pmremGen = new THREE.PMREMGenerator(renderer);
+    const envTexture = pmremGen.fromScene(new THREE.RoomEnvironment(), 2).texture;
+    scene.environment = envTexture;
+
+    // Key Light (main)
+    const keyLight = new THREE.DirectionalLight(0xffffff, 2.5);
+    keyLight.position.set(4, 10, 6);
+    keyLight.castShadow = true;
+
+    // Fill Light (softens shadows)
+    const fillLight = new THREE.DirectionalLight(0xffffff, 1.8);
+    fillLight.position.set(-6, 6, 2);
+
+    // Back Light (rim highlight)
+    const backLight = new THREE.DirectionalLight(0xffffff, 2.0);
+    backLight.position.set(0, 8, -6);
+
+    scene.add(keyLight, fillLight, backLight);
+
+    // --------------------------------------------------
+
+    // 💡 Your original lights (kept)
     const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 1.2);
     hemiLight.position.set(0, 20, 0);
     const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
@@ -66,7 +91,6 @@ export default function Canvas3D({ objects, viewMode }: Canvas3DProps) {
     dirLight.castShadow = true;
     scene.add(hemiLight, dirLight);
 
-    // Env light
     const envLight = new THREE.HemisphereLight(0xffffff, 0x222222, 0.8);
     scene.add(envLight);
 
@@ -223,6 +247,8 @@ export default function Canvas3D({ objects, viewMode }: Canvas3DProps) {
       }
 
       renderer.dispose();
+      envTexture.dispose();
+      pmremGen.dispose();
     };
   }, [objects, viewMode]);
 
