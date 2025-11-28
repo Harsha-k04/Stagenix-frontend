@@ -23,7 +23,7 @@ export default function ARViewer({ objects }: { objects: StageObject[] }) {
       pottedplant: { src: "/assets/pottedplant/scene.glb", scale: "0.8 0.8 0.8" },
       vase: { src: "/assets/vase/scene.glb", scale: "1.8 1.8 1.8" },
       wedding: {
-        src: "https://github.com/Harsha-k04/Stagenix-backend/releases/download/v1.0/perfect_stage_corrected.glb",
+        src: "https://stagenix-backend.onrender.com/model/perfect_stage_corrected.glb",
         scale: "1.8 1.8 1.8",
       },
       stage: { src: "/assets/stage/stage.glb", scale: "1.8 1.8 1.8" },
