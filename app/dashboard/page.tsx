@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import TopNavigation from "@/components/top-navigation";
 import LeftSidebar from "@/components/left-sidebar";
 import MainWorkspace from "@/components/main-workspace";
