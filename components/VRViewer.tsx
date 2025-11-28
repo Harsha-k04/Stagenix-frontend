@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 
-// ⚠️ KEEP dynamic import
 const AFrame = dynamic(() => import("aframe"), { ssr: false });
 
 interface StageObject {
@@ -15,7 +14,6 @@ interface StageObject {
 export default function VRViewer({ objects }: { objects: StageObject[] }) {
   const [aframeReady, setAframeReady] = useState(false);
 
-  // ✅ FIX: dynamic() does NOT return a promise → cannot use .then()
   useEffect(() => {
     import("aframe")
       .then(() => setAframeReady(true))
@@ -46,8 +44,11 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
 
   return (
     <div className="w-full h-full bg-black">
-      <a-scene vr-mode-ui="enabled: true" embedded renderer="antialias: true;">
-        {/* Preload assets */}
+      <a-scene
+        vr-mode-ui="enabled: true"
+        embedded
+        renderer="antialias: true; exposure: 1.5; colorManagement: true;"
+      >
         <a-assets>
           {objects.map((o, i) =>
             modelMap[o.name] ? (
@@ -56,12 +57,14 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
           )}
         </a-assets>
 
-        {/* VR Camera Rig */}
+        {/* ⭐ Added Bright Lights */}
+        <a-entity light="type: hemisphere; intensity: 2;"></a-entity>
+        <a-entity light="type: directional; intensity: 3;" position="2 4 1"></a-entity>
+
         <a-entity id="cameraRig" position="0 1.6 0">
           <a-camera wasd-controls look-controls></a-camera>
         </a-entity>
 
-        {/* Spawn 3D models */}
         {objects.map((o, i) => {
           if (!modelMap[o.name]) return null;
 
@@ -79,7 +82,6 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
           );
         })}
 
-        {/* VR Background */}
         <a-sky color="#111"></a-sky>
       </a-scene>
     </div>
