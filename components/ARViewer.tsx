@@ -19,16 +19,17 @@ export default function ARViewer({ objects }: { objects: StageObject[] }) {
     if (!doc) return;
 
     // Model map (scales matched to Canvas3D)
-    const modelMap: Record<string, { src: string; scale: string }> = {
-      pottedplant: { src: "/assets/pottedplant/scene.glb", scale: "0.05 0.05 0.05",position:"0 0.1 0" },
-      vase: { src: "/assets/vase/scene.glb", scale: "0.05 0.05 0.05", position:"0 0.1 0" },
+    const modelMap: Record<string, { src: string; scale: string; position: string }> = {
+      pottedplant: { src: "/assets/pottedplant/scene.glb", scale: "1 1 1", position: "0 0 0" },
+      vase: { src: "/assets/vase/scene.glb", scale: "1 1 1", position: "0 0 0" },
       wedding: {
         src: "https://stagenix-backend.onrender.com/model/perfect_stage_corrected.glb",
-        scale: "0.05 0.05 0.05",
-        position:"0 0.1 0",
+        scale: "1 1 1",
+        position: "0 0 0",
       },
-      stage: { src: "/assets/stage/stage.glb", scale: "0.05 0.05 0.05", position:"0 0.1 0" },
+      stage: { src: "/assets/stage/stage.glb", scale: "1 1 1", position: "0 0 0" },
     };
+
 
     // Build A-Frame entities
     const entityStrings = (objects || [])
@@ -115,15 +116,12 @@ export default function ARViewer({ objects }: { objects: StageObject[] }) {
 
 <div id="hint">Point camera at the Hiro marker</div>
 
-<div id="hiroWrap">
-  <div style="font-size:11px; text-align:center; margin-bottom:4px;">Hiro marker</div>
-  <img src="https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/images/hiro.png" />
-</div>
+
 
 <!-- NOTE: renderer includes alpha:true so camera/video can show behind WebGL -->
 <a-scene
   embedded
-  vr-mode-ui="enabled: true"
+  vr-mode-ui="enabled: false"
   renderer="antialias: true; exposure: 2.2;"
   arjs="trackingMethod: best; sourceType: webcam; sourceWidth:1280; sourceHeight:720; debugUIEnabled:false;"
 >
