@@ -41,13 +41,12 @@ export default function Canvas3D({ objects, viewMode }: Canvas3DProps) {
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.shadowMap.enabled = true;
 
-    /* 🔥 ADD THIS (Tone mapping + sRGB fix — TS compatible) */
+    // --- SAFE COLORSPACE FIX ---
     (renderer as any).toneMapping = THREE.ACESFilmicToneMapping;
     (renderer as any).toneMappingExposure = 1.1;
 
-    if ((THREE as any).sRGBEncoding) {
-      (renderer as any).outputEncoding = (THREE as any).sRGBEncoding;
-    } else if ((THREE as any).SRGBColorSpace) {
+    // Only set SRGBColorSpace (modern THREE)
+    if ((THREE as any).SRGBColorSpace) {
       (renderer as any).outputColorSpace = (THREE as any).SRGBColorSpace;
     }
 
@@ -67,7 +66,7 @@ export default function Canvas3D({ objects, viewMode }: Canvas3DProps) {
     dirLight.castShadow = true;
     scene.add(hemiLight, dirLight);
 
-    /* 🌟 ADD THIS (extra environment light for GLTF correctness) */
+    // Env light
     const envLight = new THREE.HemisphereLight(0xffffff, 0x222222, 0.8);
     scene.add(envLight);
 
@@ -80,12 +79,11 @@ export default function Canvas3D({ objects, viewMode }: Canvas3DProps) {
     plane.receiveShadow = true;
     scene.add(plane);
 
-    // 🔵 Debug helpers
+    // Helpers
     const gridHelper = new THREE.GridHelper(20, 40, 0x888888, 0x444444);
     const axesHelper = new THREE.AxesHelper(3);
     scene.add(gridHelper, axesHelper);
 
-    // 🟨 Center cube
     const debugCube = new THREE.Mesh(
       new THREE.BoxGeometry(0.6, 0.6, 0.6),
       new THREE.MeshStandardMaterial({ color: 0xffcc00 })
@@ -93,7 +91,7 @@ export default function Canvas3D({ objects, viewMode }: Canvas3DProps) {
     debugCube.position.set(0, 0.3, 0);
     scene.add(debugCube);
 
-    // 🧩 Loader
+    // Loader
     const loader = new GLTFLoader();
     const loadedObjects: THREE.Object3D[] = [];
     const modelPositions: THREE.Vector3[] = [];
@@ -130,31 +128,17 @@ export default function Canvas3D({ objects, viewMode }: Canvas3DProps) {
 
       loader.load(
         modelPath,
-
-        // ---------------- START LOAD CALLBACK ----------------
         (gltf) => {
-          console.log("🔵 MODEL LOADED:", modelPath);
-          console.log("🔵 Scene object:", gltf.scene);
-          console.log("🔵 Scene children:", gltf.scene.children);
-          console.log("🔵 Starting processing…");
-
-          console.log("STEP 1: Apply scale + rotations");
           const model = gltf.scene;
           model.scale.set(scale, scale, scale);
 
-          // --- FIX START ---
           const box = new THREE.Box3().setFromObject(model);
-          const center = new THREE.Vector3();
-          box.getCenter(center);
-
-          model.position.y -= box.min.y; // Sit on ground
-          // --- FIX END ---
+          model.position.y -= box.min.y;
 
           model.position.x += px * 3;
           model.position.z += pz * 3;
           model.rotation.set(rx, ry, rz);
 
-          console.log("STEP 2: Enable shadows on meshes");
           model.traverse((child) => {
             const mesh = child as THREE.Mesh;
             if (mesh.isMesh) {
@@ -163,31 +147,20 @@ export default function Canvas3D({ objects, viewMode }: Canvas3DProps) {
             }
           });
 
-          console.log("STEP 3: Adding model to scene…");
           scene.add(model);
-
           loadedObjects.push(model);
           modelPositions.push(new THREE.Vector3(px * 3, py, pz * 3));
+
           loadedCount += 1;
-          console.log(`STEP 4: Model added (${loadedCount}/${expectedCount})`);
-
           if (loadedCount === expectedCount) {
-            console.log("STEP 5: Centering camera on loaded models…");
-
             const avg = new THREE.Vector3();
             modelPositions.forEach((p) => avg.add(p));
             avg.divideScalar(modelPositions.length);
-
-            console.log("STEP 6: Camera target:", avg);
             controls.target.copy(avg);
             camera.lookAt(avg);
-
-            console.log("✅ Finished all model loading!");
           }
         },
-
         undefined,
-
         (err) => {
           loadedCount += 1;
           console.error("❌ Model load error:", modelPath, err);
@@ -195,7 +168,7 @@ export default function Canvas3D({ objects, viewMode }: Canvas3DProps) {
       );
     });
 
-    // 🌀 Animation
+    // Animate
     let rafId = 0;
     const animate = () => {
       rafId = requestAnimationFrame(animate);
@@ -205,7 +178,7 @@ export default function Canvas3D({ objects, viewMode }: Canvas3DProps) {
     };
     animate();
 
-    // 📏 Resize
+    // Resize
     const handleResize = () => {
       if (!mountRef.current) return;
       const { clientWidth, clientHeight } = mountRef.current;
@@ -226,13 +199,11 @@ export default function Canvas3D({ objects, viewMode }: Canvas3DProps) {
         obj.traverse((child) => {
           const mesh = child as THREE.Mesh;
           if (mesh.isMesh) {
-            if (mesh.geometry) mesh.geometry.dispose();
+            mesh.geometry?.dispose();
             if (Array.isArray(mesh.material)) {
-              mesh.material.forEach((m) => {
-                if ((m as THREE.Material).dispose) (m as THREE.Material).dispose();
-              });
-            } else if (mesh.material) {
-              (mesh.material as THREE.Material).dispose();
+              mesh.material.forEach((m) => (m as THREE.Material).dispose?.());
+            } else {
+              (mesh.material as THREE.Material)?.dispose?.();
             }
           }
         });
