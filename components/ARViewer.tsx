@@ -122,8 +122,8 @@ export default function ARViewer({ objects }: { objects: StageObject[] }) {
 <!-- NOTE: renderer includes alpha:true so camera/video can show behind WebGL -->
 <a-scene
   embedded
-  vr-mode-ui="enabled: false"
-  renderer="alpha: true; logarithmicDepthBuffer: true;"
+  vr-mode-ui="enabled: true"
+  renderer="antialias: true; colorManagement: true; exposure: 1.5;"
   arjs="trackingMethod: best; sourceType: webcam; sourceWidth:1280; sourceHeight:720; debugUIEnabled:false;"
 >
   <a-assets>
@@ -135,6 +135,8 @@ export default function ARViewer({ objects }: { objects: StageObject[] }) {
       })
       .join("\n")}
   </a-assets>
+  <a-entity light="type: hemisphere; intensity: 2; color: #ffffff; groundColor: #666666"></a-entity>
+  <a-entity light="type: directional; intensity: 3; castShadow: true" position="2 4 1"></a-entity>
 
 
   <a-marker preset="hiro" emitevents="true" id="hiroMarker">
