@@ -12,15 +12,15 @@ interface StageObject {
 }
 
 export default function VRViewer({ objects }: { objects: StageObject[] }) {
-  const [aframeReady, setAframeReady] = useState(false);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     import("aframe")
-      .then(() => setAframeReady(true))
-      .catch((err) => console.error("A-Frame load error:", err));
+      .then(() => setReady(true))
+      .catch(console.error);
   }, []);
 
-  if (!aframeReady) {
+  if (!ready) {
     return (
       <div className="w-full h-full flex items-center justify-center bg-black text-white">
         Loading VR Viewer…
@@ -35,20 +35,25 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
     stage: "/assets/stage/stage.glb",
   };
 
+  // ⭐ INCREASE BRIGHTNESS + MODEL SIZE
   const scaleMap: Record<string, string> = {
-    pottedplant: "0.8 0.8 0.8",
-    vase: "1.8 1.8 1.8",
-    wedding: "1.8 1.8 1.8",
-    stage: "1.8 1.8 1.8",
+    pottedplant: "2 2 2",
+    vase: "3 3 3",
+    wedding: "5 5 5",   // BIG STAGE!
+    stage: "5 5 5",
   };
 
   return (
     <div className="w-full h-full bg-black">
       <a-scene
-        vr-mode-ui="enabled: true"
         embedded
-        renderer="antialias: true; exposure: 1.5; colorManagement: true;"
+        vr-mode-ui="enabled: true"
+        renderer="antialias: true; colorManagement: true;"
       >
+        {/* ⭐ BRIGHT LIGHTS */}
+        <a-entity light="type: ambient; color: #ffffff; intensity: 2"></a-entity>
+        <a-entity light="type: directional; color: #ffffff; intensity: 3" position="1 4 2"></a-entity>
+
         <a-assets>
           {objects.map((o, i) =>
             modelMap[o.name] ? (
@@ -57,18 +62,16 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
           )}
         </a-assets>
 
-        {/* ⭐ Added Bright Lights */}
-        <a-entity light="type: hemisphere; intensity: 2;"></a-entity>
-        <a-entity light="type: directional; intensity: 3;" position="2 4 1"></a-entity>
-
-        <a-entity id="cameraRig" position="0 1.6 0">
-          <a-camera wasd-controls look-controls></a-camera>
+        {/* Camera */}
+        <a-entity id="cameraRig" position="0 1.6 3">
+          <a-camera look-controls wasd-controls></a-camera>
         </a-entity>
 
+        {/* Model */}
         {objects.map((o, i) => {
           if (!modelMap[o.name]) return null;
 
-          const pos = `${o.position[0] * 2} ${o.position[1]} ${o.position[2] * 2}`;
+          const pos = `${o.position[0] * 1} ${o.position[1]} ${o.position[2] * 1}`;
           const rot = `${o.rotation[0]} ${o.rotation[1]} ${o.rotation[2]}`;
 
           return (
