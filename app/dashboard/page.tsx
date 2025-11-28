@@ -14,6 +14,11 @@ export default function Dashboard() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [sceneObjects, setSceneObjects] = useState<any[]>([]);
 
+  useEffect(() => {
+    fetch("https://stagenix-backend.onrender.com/ping").catch(() => {});
+  }, []);
+
+
   return (
     <div className="min-h-screen bg-background text-foreground overflow-y-auto flex flex-col">
       {/* Top Navigation */}
