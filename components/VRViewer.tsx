@@ -33,7 +33,7 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
   const modelMap: Record<string, string> = {
     pottedplant: "/assets/pottedplant/scene.glb",
     vase: "/assets/vase/scene.glb",
-    wedding: "https://github.com/Harsha-k04/Stagenix-backend/releases/download/v1.0/perfect_stage_corrected.glb",
+    wedding: "https://stagenix-backend.onrender.com/model/perfect_stage_corrected.glb",
     stage: "/assets/stage/stage.glb",
   };
 
