@@ -20,14 +20,14 @@ export default function ARViewer({ objects }: { objects: StageObject[] }) {
 
     // Model map (scales matched to Canvas3D)
     const modelMap: Record<string, { src: string; scale: string }> = {
-      pottedplant: { src: "/assets/pottedplant/scene.glb", scale: "0.05 0.05 0.05",position="0 0.1 0" },
-      vase: { src: "/assets/vase/scene.glb", scale: "0.05 0.05 0.05", position="0 0.1 0" },
+      pottedplant: { src: "/assets/pottedplant/scene.glb", scale: "0.05 0.05 0.05",position:"0 0.1 0" },
+      vase: { src: "/assets/vase/scene.glb", scale: "0.05 0.05 0.05", position:"0 0.1 0" },
       wedding: {
         src: "https://stagenix-backend.onrender.com/model/perfect_stage_corrected.glb",
         scale: "0.05 0.05 0.05",
-        position="0 0.1 0"
+        position:"0 0.1 0",
       },
-      stage: { src: "/assets/stage/stage.glb", scale: "0.05 0.05 0.05", position="0 0.1 0" },
+      stage: { src: "/assets/stage/stage.glb", scale: "0.05 0.05 0.05", position:"0 0.1 0" },
     };
 
     // Build A-Frame entities
