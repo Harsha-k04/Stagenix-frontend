@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 
+// ⚠️ KEEP dynamic import
 const AFrame = dynamic(() => import("aframe"), { ssr: false });
 
 interface StageObject {
@@ -14,9 +15,11 @@ interface StageObject {
 export default function VRViewer({ objects }: { objects: StageObject[] }) {
   const [aframeReady, setAframeReady] = useState(false);
 
-  // Load A-Frame only on client
+  // ✅ FIX: dynamic() does NOT return a promise → cannot use .then()
   useEffect(() => {
-    AFrame.then(() => setAframeReady(true));
+    import("aframe")
+      .then(() => setAframeReady(true))
+      .catch((err) => console.error("A-Frame load error:", err));
   }, []);
 
   if (!aframeReady) {
@@ -43,40 +46,26 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
 
   return (
     <div className="w-full h-full bg-black">
-      <a-scene
-        vr-mode-ui="enabled: true"
-        embedded
-        renderer="antialias: true;"
-      >
+      <a-scene vr-mode-ui="enabled: true" embedded renderer="antialias: true;">
         {/* Preload assets */}
         <a-assets>
           {objects.map((o, i) =>
             modelMap[o.name] ? (
-              <a-asset-item
-                key={i}
-                id={`asset-${i}`}
-                src={modelMap[o.name]}
-              />
+              <a-asset-item key={i} id={`asset-${i}`} src={modelMap[o.name]} />
             ) : null
           )}
         </a-assets>
 
-        {/* Proper VR camera */}
-        <a-entity
-          id="cameraRig"
-          position="0 1.6 0"
-        >
+        {/* VR Camera Rig */}
+        <a-entity id="cameraRig" position="0 1.6 0">
           <a-camera wasd-controls look-controls></a-camera>
         </a-entity>
 
-        {/* Place 3D models */}
+        {/* Spawn 3D models */}
         {objects.map((o, i) => {
           if (!modelMap[o.name]) return null;
 
-          const pos = `${o.position[0] * 2} ${o.position[1]} ${
-            o.position[2] * 2
-          }`;
-
+          const pos = `${o.position[0] * 2} ${o.position[1]} ${o.position[2] * 2}`;
           const rot = `${o.rotation[0]} ${o.rotation[1]} ${o.rotation[2]}`;
 
           return (
@@ -90,7 +79,7 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
           );
         })}
 
-        {/* VR Sky Background */}
+        {/* VR Background */}
         <a-sky color="#111"></a-sky>
       </a-scene>
     </div>
