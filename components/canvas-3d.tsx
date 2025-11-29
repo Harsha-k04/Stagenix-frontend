@@ -101,7 +101,6 @@ export default function Canvas3D({ objects, viewMode }: Canvas3DProps) {
     scene.add(plane);
 
     // Helpers
-
     const gridHelper = new THREE.GridHelper(20, 40, 0x888888, 0x444444);
     const axesHelper = new THREE.AxesHelper(3);
     scene.add(gridHelper, axesHelper);
@@ -113,14 +112,13 @@ export default function Canvas3D({ objects, viewMode }: Canvas3DProps) {
     debugCube.position.set(0, 0.3, 0);
     scene.add(debugCube);
 
-// 🟦 Hide helpers when objects exist (after generation)
+    // 🟦 Hide helpers when objects exist (after generation)
     if (objects.length > 0) {
       gridHelper.visible = false;
       axesHelper.visible = false;
       debugCube.visible = false;
       plane.visible = false; // optional: remove ground
     }
-
 
     // Loader
     const loader = new GLTFLoader();
@@ -166,8 +164,11 @@ export default function Canvas3D({ objects, viewMode }: Canvas3DProps) {
           const box = new THREE.Box3().setFromObject(model);
           model.position.y -= box.min.y;
 
-          model.position.x += px * 3;
-          model.position.z += pz * 3;
+          // ⭐⭐⭐ CENTER THE MODEL ⭐⭐⭐
+          model.position.set(0, 0, 0);
+          controls.target.set(0, 1, 0);
+          camera.position.set(0, 3, 6);
+
           model.rotation.set(rx, ry, rz);
 
           model.traverse((child) => {
@@ -180,15 +181,12 @@ export default function Canvas3D({ objects, viewMode }: Canvas3DProps) {
 
           scene.add(model);
           loadedObjects.push(model);
-          modelPositions.push(new THREE.Vector3(px * 3, py, pz * 3));
+          modelPositions.push(new THREE.Vector3(0, 0, 0));
 
           loadedCount += 1;
           if (loadedCount === expectedCount) {
-            const avg = new THREE.Vector3();
-            modelPositions.forEach((p) => avg.add(p));
-            avg.divideScalar(modelPositions.length);
-            controls.target.copy(avg);
-            camera.lookAt(avg);
+            controls.target.set(0, 1, 0);
+            camera.lookAt(0, 1, 0);
           }
         },
         undefined,
