@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js"; // ✅ FIXED IMPORT
+import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 
 interface StageObject {
   name: string;
@@ -23,11 +23,11 @@ export default function Canvas3D({ objects, viewMode }: Canvas3DProps) {
   useEffect(() => {
     if (!mountRef.current) return;
 
-    // 🧱 Scene
+    // Scene
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x151515);
 
-    // 🎥 Camera
+    // Camera
     const camera = new THREE.PerspectiveCamera(
       60,
       mountRef.current.clientWidth / mountRef.current.clientHeight,
@@ -36,12 +36,11 @@ export default function Canvas3D({ objects, viewMode }: Canvas3DProps) {
     );
     camera.position.set(0, 3, 6);
 
-    // ⚙️ Renderer
+    // Renderer
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(mountRef.current.clientWidth, mountRef.current.clientHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.shadowMap.enabled = true;
-
     (renderer as any).toneMapping = THREE.ACESFilmicToneMapping;
     (renderer as any).toneMappingExposure = 1.3;
 
@@ -51,35 +50,29 @@ export default function Canvas3D({ objects, viewMode }: Canvas3DProps) {
 
     mountRef.current.appendChild(renderer.domElement);
 
-    // 🎮 Orbit Controls
+    // Controls
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
     controls.target.set(0, 1, 0);
 
-    // --------------------------------------------------
-    // ⭐⭐⭐ FIXED ENV MAP IMPORT ⭐⭐⭐
-    // --------------------------------------------------
+    // Env map
     const pmremGen = new THREE.PMREMGenerator(renderer);
-    const envTexture = pmremGen.fromScene(new RoomEnvironment(renderer), 2).texture; // ✅ FIXED
+    const envTexture = pmremGen.fromScene(new RoomEnvironment(renderer), 2).texture;
     scene.environment = envTexture;
 
-    // Key Light (main)
+    // Lights (your original lights)
     const keyLight = new THREE.DirectionalLight(0xffffff, 2.5);
     keyLight.position.set(4, 10, 6);
     keyLight.castShadow = true;
 
-    // Fill Light
     const fillLight = new THREE.DirectionalLight(0xffffff, 1.8);
     fillLight.position.set(-6, 6, 2);
 
-    // Back Light
     const backLight = new THREE.DirectionalLight(0xffffff, 2.0);
     backLight.position.set(0, 8, -6);
 
     scene.add(keyLight, fillLight, backLight);
-
-    // --------------------------------------------------
 
     const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 1.2);
     hemiLight.position.set(0, 20, 0);
@@ -91,7 +84,7 @@ export default function Canvas3D({ objects, viewMode }: Canvas3DProps) {
     const envLight = new THREE.HemisphereLight(0xffffff, 0x222222, 0.8);
     scene.add(envLight);
 
-    // 🟫 Ground plane
+    // Ground
     const plane = new THREE.Mesh(
       new THREE.PlaneGeometry(20, 20),
       new THREE.MeshStandardMaterial({ color: 0x222222 })
@@ -112,23 +105,21 @@ export default function Canvas3D({ objects, viewMode }: Canvas3DProps) {
     debugCube.position.set(0, 0.3, 0);
     scene.add(debugCube);
 
-    // 🟦 Hide helpers when objects exist (after generation)
     if (objects.length > 0) {
       gridHelper.visible = false;
       axesHelper.visible = false;
       debugCube.visible = false;
-      plane.visible = false; // optional: remove ground
+      plane.visible = false;
     }
 
     // Loader
     const loader = new GLTFLoader();
     const loadedObjects: THREE.Object3D[] = [];
-    const modelPositions: THREE.Vector3[] = [];
 
     const toLoad = (objects || [])
       .map((obj) => {
         let modelPath = "";
-        let scale = 2;
+        let scale = 3;
 
         if (obj.name === "pottedplant") {
           modelPath = "/assets/pottedplant/scene.glb";
@@ -146,34 +137,35 @@ export default function Canvas3D({ objects, viewMode }: Canvas3DProps) {
 
         return { source: obj, modelPath, scale };
       })
-      .filter((entry) => entry.modelPath);
+      .filter((x) => x.modelPath);
 
-    let loadedCount = 0;
-    const expectedCount = toLoad.length;
-
+    // LOAD LOOP
     toLoad.forEach(({ source, modelPath, scale }) => {
-      const [px, py, pz] = source.position;
-      const [rx, ry, rz] = source.rotation;
-
       loader.load(
         modelPath,
         (gltf) => {
           const model = gltf.scene;
+
+          // Apply user scale
           model.scale.set(scale, scale, scale);
 
+          // ⭐ MAKE MODEL PERFECTLY CENTERED ⭐
           const box = new THREE.Box3().setFromObject(model);
-          model.position.y -= box.min.y;
+          const center = new THREE.Vector3();
+          box.getCenter(center);
+          model.position.sub(center); // shift so center is (0,0,0)
 
-          // ⭐⭐⭐ CENTER THE MODEL ⭐⭐⭐
-          model.position.set(0, 0, 0);
-          controls.target.set(0, 1, 0);
-          camera.position.set(0, 3, 6);
+          // ⭐ Auto camera distance based on size ⭐
+          const size = box.getSize(new THREE.Vector3()).length();
+          const distance = size * 1.2;
+          camera.position.set(0, distance * 0.6, distance);
 
-          model.rotation.set(rx, ry, rz);
+          controls.target.set(0, 0.5 * size, 0);
+          controls.update();
 
           model.traverse((child) => {
-            const mesh = child as THREE.Mesh;
-            if (mesh.isMesh) {
+            if ((child as THREE.Mesh).isMesh) {
+              const mesh = child as THREE.Mesh;
               mesh.castShadow = true;
               mesh.receiveShadow = true;
             }
@@ -181,23 +173,13 @@ export default function Canvas3D({ objects, viewMode }: Canvas3DProps) {
 
           scene.add(model);
           loadedObjects.push(model);
-          modelPositions.push(new THREE.Vector3(0, 0, 0));
-
-          loadedCount += 1;
-          if (loadedCount === expectedCount) {
-            controls.target.set(0, 1, 0);
-            camera.lookAt(0, 1, 0);
-          }
         },
         undefined,
-        (err) => {
-          loadedCount += 1;
-          console.error("❌ Model load error:", modelPath, err);
-        }
+        (err) => console.error("Model load error:", modelPath, err)
       );
     });
 
-    // Animate
+    // Animation loop
     let rafId = 0;
     const animate = () => {
       rafId = requestAnimationFrame(animate);
@@ -207,15 +189,18 @@ export default function Canvas3D({ objects, viewMode }: Canvas3DProps) {
     };
     animate();
 
-    // Resize
+    // Resize handler
     const handleResize = () => {
-      if (!mountRef.current) return;
-      const { clientWidth, clientHeight } = mountRef.current;
-      camera.aspect = clientWidth / clientHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(clientWidth, clientHeight);
+      if (mountRef.current) {
+        camera.aspect =
+          mountRef.current.clientWidth / mountRef.current.clientHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(
+          mountRef.current.clientWidth,
+          mountRef.current.clientHeight
+        );
+      }
     };
-
     window.addEventListener("resize", handleResize);
 
     // Cleanup
@@ -225,29 +210,12 @@ export default function Canvas3D({ objects, viewMode }: Canvas3DProps) {
 
       loadedObjects.forEach((obj) => {
         scene.remove(obj);
-        obj.traverse((child) => {
-          const mesh = child as THREE.Mesh;
-          if (mesh.isMesh) {
-            mesh.geometry?.dispose();
-            if (Array.isArray(mesh.material)) {
-              mesh.material.forEach((m) => (m as THREE.Material).dispose?.());
-            } else {
-              (mesh.material as THREE.Material)?.dispose?.();
-            }
-          }
-        });
       });
 
-      gridHelper.geometry.dispose();
-      (gridHelper.material as THREE.Material).dispose();
-      plane.geometry.dispose();
-      (plane.material as THREE.Material).dispose();
-      debugCube.geometry.dispose();
-      (debugCube.material as THREE.Material).dispose();
-      axesHelper.geometry.dispose();
-      (axesHelper.material as THREE.Material).dispose();
-
-      if (mountRef.current && renderer.domElement.parentElement === mountRef.current) {
+      if (
+        mountRef.current &&
+        renderer.domElement.parentElement === mountRef.current
+      ) {
         mountRef.current.removeChild(renderer.domElement);
       }
 
