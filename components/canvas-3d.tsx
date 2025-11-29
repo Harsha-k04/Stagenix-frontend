@@ -138,8 +138,8 @@ export default function Canvas3D({ objects, viewMode }: Canvas3DProps) {
         } else if (obj.name === "vase") {
           modelPath = "/assets/vase/scene.glb";
           scale = 1.8;
-        } else if (obj.name === "wedding") {
-          modelPath = "https://stagenix-backend.onrender.com/model/perfect_stage_corrected.glb";
+        } else if (obj.glbUrl) {
+          modelPath = obj.glbUrl;
           scale = 3;
         } else if (obj.name === "stage") {
           modelPath = "/assets/stage/stage.glb";
