@@ -18,24 +18,52 @@ export default function RightPanel({
   const [results, setResults] = useState<any>(null)
 
   // 🧠 Function for text prompt
-  const handleGenerate = async () => {
-    if (!prompt.trim()) return alert("Enter a prompt first!")
+ const handleGenerate = async () => {
+  if (!prompt.trim()) return alert("Enter a prompt");
 
-    setIsGenerating(true)
-    try {
-      const data = await sendPrompt(prompt)
-      console.log("Backend response:", data)
-      setResults(data)
+  setIsGenerating(true);
+  setResults(null);
 
-      // ✅ If backend returns objects (like potted plant, vase)
-      if (data.objects) setSceneObjects(data.objects)
-    } catch (err) {
-      console.error("Prompt error:", err)
-      alert("Error connecting to backend.")
-    } finally {
-      setIsGenerating(false)
-    }
+  try {
+    // 1️⃣ Ask backend to create job
+    const { job_id } = await request3DGeneration(prompt);
+    console.log("Job created:", job_id);
+
+    // 2️⃣ Poll job status every 4 seconds
+    const interval = setInterval(async () => {
+      const statusData = await checkJobStatus(job_id);
+      console.log("Status:", statusData);
+
+      if (statusData.status === "done") {
+        clearInterval(interval);
+
+        const glbUrl = `${API_BASE_URL}/result/${job_id}`;
+
+        // 🔥 Replace sceneObjects with the 3D model returned
+        setSceneObjects([
+          {
+            name: "wedding", // any label
+            position: [0, 0, 0],
+            rotation: [0, 0, 0],
+            glbUrl,      // <<<<<< USE THIS IN CANVAS3D
+          },
+        ]);
+
+        setIsGenerating(false);
+      }
+
+      if (statusData.status === "failed") {
+        clearInterval(interval);
+        setIsGenerating(false);
+        alert("Generation failed.");
+      }
+    }, 4000);
+  } catch (err) {
+    console.error(err);
+    setIsGenerating(false);
   }
+};
+
 
   // 🧠 Function for image upload
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
