@@ -2,6 +2,9 @@
 
 import { useState } from "react"
 import { sendPrompt, uploadImage } from "@/lib/api"
+import { request3DGeneration, checkJobStatus } from "@/lib/api";
+import { API_BASE_URL } from "@/lib/api";
+
 
 interface RightPanelProps {
   isGenerating: boolean
