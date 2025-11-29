@@ -140,7 +140,7 @@ export default function Canvas3D({ objects, viewMode }: Canvas3DProps) {
           scale = 1.8;
         } else if (obj.glbUrl) {
           modelPath = obj.glbUrl;
-          scale = 3;
+          scale = 20;
         } else if (obj.name === "stage") {
           modelPath = "/assets/stage/stage.glb";
           scale = 1.8;
