@@ -41,6 +41,7 @@ export default function Canvas3D({ objects, viewMode }: Canvas3DProps) {
     renderer.setSize(mountRef.current.clientWidth, mountRef.current.clientHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.shadowMap.enabled = true;
+
     (renderer as any).toneMapping = THREE.ACESFilmicToneMapping;
     (renderer as any).toneMappingExposure = 1.3;
 
@@ -56,12 +57,12 @@ export default function Canvas3D({ objects, viewMode }: Canvas3DProps) {
     controls.dampingFactor = 0.05;
     controls.target.set(0, 1, 0);
 
-    // Env map
+    // Env
     const pmremGen = new THREE.PMREMGenerator(renderer);
     const envTexture = pmremGen.fromScene(new RoomEnvironment(renderer), 2).texture;
     scene.environment = envTexture;
 
-    // Lights (your original lights)
+    // Lights
     const keyLight = new THREE.DirectionalLight(0xffffff, 2.5);
     keyLight.position.set(4, 10, 6);
     keyLight.castShadow = true;
@@ -84,7 +85,7 @@ export default function Canvas3D({ objects, viewMode }: Canvas3DProps) {
     const envLight = new THREE.HemisphereLight(0xffffff, 0x222222, 0.8);
     scene.add(envLight);
 
-    // Ground
+    // Ground plane
     const plane = new THREE.Mesh(
       new THREE.PlaneGeometry(20, 20),
       new THREE.MeshStandardMaterial({ color: 0x222222 })
@@ -119,7 +120,7 @@ export default function Canvas3D({ objects, viewMode }: Canvas3DProps) {
     const toLoad = (objects || [])
       .map((obj) => {
         let modelPath = "";
-        let scale = 3;
+        let scale = 2;
 
         if (obj.name === "pottedplant") {
           modelPath = "/assets/pottedplant/scene.glb";
@@ -137,70 +138,69 @@ export default function Canvas3D({ objects, viewMode }: Canvas3DProps) {
 
         return { source: obj, modelPath, scale };
       })
-      .filter((x) => x.modelPath);
+      .filter((entry) => entry.modelPath);
 
-    // LOAD LOOP
+    let loadedCount = 0;
+    const expectedCount = toLoad.length;
+
     toLoad.forEach(({ source, modelPath, scale }) => {
       loader.load(
         modelPath,
         (gltf) => {
           const model = gltf.scene;
-
-          // Apply user scale
           model.scale.set(scale, scale, scale);
 
-          // ⭐ MAKE MODEL PERFECTLY CENTERED ⭐
+          // ⭐ GET BOUNDING BOX
           const box = new THREE.Box3().setFromObject(model);
           const center = new THREE.Vector3();
-          box.getCenter(center);
-          model.position.sub(center); // shift so center is (0,0,0)
+          box.getCenter(center); // center of model in local space
 
-          // ⭐ Auto camera distance based on size ⭐
+          // ⭐ SHIFT MODEL TO CENTER
+          model.position.x = -center.x;
+          model.position.y = -center.y + 1.0; // lift slightly up
+          model.position.z = -center.z;
+
+          // ⭐ OPTIONAL: auto-fit camera distance
           const size = box.getSize(new THREE.Vector3()).length();
-          const distance = size * 1.2;
-          camera.position.set(0, distance * 0.6, distance);
+          const fitDistance = size * 0.75;
 
-          controls.target.set(0, 0.5 * size, 0);
-          controls.update();
-
-          model.traverse((child) => {
-            if ((child as THREE.Mesh).isMesh) {
-              const mesh = child as THREE.Mesh;
-              mesh.castShadow = true;
-              mesh.receiveShadow = true;
-            }
-          });
+          camera.position.set(0, size * 0.4, fitDistance);
+          controls.target.set(0, 1, 0);
 
           scene.add(model);
           loadedObjects.push(model);
+
+          loadedCount++;
+          if (loadedCount === expectedCount) {
+            camera.lookAt(0, 1, 0);
+          }
         },
         undefined,
-        (err) => console.error("Model load error:", modelPath, err)
+        (err) => {
+          console.error("❌ Model load error:", modelPath, err);
+          loadedCount++;
+        }
       );
     });
 
-    // Animation loop
+    // Animate
     let rafId = 0;
     const animate = () => {
       rafId = requestAnimationFrame(animate);
       controls.update();
-      debugCube.rotation.y += 0.01;
       renderer.render(scene, camera);
     };
     animate();
 
-    // Resize handler
+    // Resize
     const handleResize = () => {
-      if (mountRef.current) {
-        camera.aspect =
-          mountRef.current.clientWidth / mountRef.current.clientHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(
-          mountRef.current.clientWidth,
-          mountRef.current.clientHeight
-        );
-      }
+      if (!mountRef.current) return;
+      const { clientWidth, clientHeight } = mountRef.current;
+      camera.aspect = clientWidth / clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(clientWidth, clientHeight);
     };
+
     window.addEventListener("resize", handleResize);
 
     // Cleanup
@@ -210,12 +210,29 @@ export default function Canvas3D({ objects, viewMode }: Canvas3DProps) {
 
       loadedObjects.forEach((obj) => {
         scene.remove(obj);
+        obj.traverse((child) => {
+          const mesh = child as THREE.Mesh;
+          if (mesh.isMesh) {
+            mesh.geometry?.dispose();
+            if (Array.isArray(mesh.material)) {
+              mesh.material.forEach((m) => (m as THREE.Material).dispose?.());
+            } else {
+              (mesh.material as THREE.Material)?.dispose?.();
+            }
+          }
+        });
       });
 
-      if (
-        mountRef.current &&
-        renderer.domElement.parentElement === mountRef.current
-      ) {
+      gridHelper.geometry.dispose();
+      (gridHelper.material as THREE.Material).dispose();
+      plane.geometry.dispose();
+      (plane.material as THREE.Material).dispose();
+      debugCube.geometry.dispose();
+      (debugCube.material as THREE.Material).dispose();
+      axesHelper.geometry.dispose();
+      (axesHelper.material as THREE.Material).dispose();
+
+      if (mountRef.current && renderer.domElement.parentElement === mountRef.current) {
         mountRef.current.removeChild(renderer.domElement);
       }
 
