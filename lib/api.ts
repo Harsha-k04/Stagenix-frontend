@@ -1,17 +1,19 @@
 export const API_BASE_URL = "https://stagenix-backend.onrender.com";
 
-export async function sendPrompt(prompt: string) {
-  const formData = new FormData();
-  formData.append("prompt", prompt);
-  const res = await fetch(`${API_BASE_URL}/predict`, { method: "POST", body: formData });
-  if (!res.ok) throw new Error("Failed to get response from backend");
-  return res.json();
+// 1️⃣ Create job
+export async function request3DGeneration(prompt: string) {
+  const res = await fetch(`${API_BASE_URL}/generate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt }),
+  });
+
+  if (!res.ok) throw new Error("Failed to create job");
+  return res.json(); // {job_id}
 }
 
-export async function uploadImage(imageFile: File) {
-  const formData = new FormData();
-  formData.append("image", imageFile);
-  const res = await fetch(`${API_BASE_URL}/predict`, { method: "POST", body: formData });
-  if (!res.ok) throw new Error("Failed to upload image");
+// 2️⃣ Poll job status
+export async function checkJobStatus(job_id: string) {
+  const res = await fetch(`${API_BASE_URL}/status/${job_id}`);
   return res.json();
 }
