@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import TopNavigation from "@/components/top-navigation";
 import LeftSidebar from "@/components/left-sidebar";
 import MainWorkspace from "@/components/main-workspace";
@@ -14,10 +14,18 @@ export default function Dashboard() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [sceneObjects, setSceneObjects] = useState<any[]>([]);
 
+  // 👉 Added reference to access RightPanel sketch handler
+  const rightPanelRef = useRef<any>(null);
+
+  // 👉 Added handler that forwards sketch file to RightPanel
+  const handleSketchSelected = (file: File) => {
+    console.log("Sketch received in Dashboard:", file);
+    rightPanelRef.current?.handleSketchUpload(file);
+  };
+
   useEffect(() => {
     fetch("https://stagenix-backend.onrender.com/ping").catch(() => {});
   }, []);
-
 
   return (
     <div className="min-h-screen bg-background text-foreground overflow-y-auto flex flex-col">
@@ -70,7 +78,7 @@ export default function Dashboard() {
         
         {/* Sidebar */}
         <div className="lg:w-[70px] shrink-0 border-r border-primary/10 bg-card/20">
-          <LeftSidebar />
+          <LeftSidebar onSketchSelected={handleSketchSelected} />
         </div>
 
         {/* Workspace */}
@@ -95,6 +103,7 @@ export default function Dashboard() {
           {/* Right panel */}
           <div className="w-full md:w-[370px] border-l border-primary/20 bg-card/30">
             <RightPanel
+              ref={rightPanelRef}
               isGenerating={isGenerating}
               setIsGenerating={setIsGenerating}
               setSceneObjects={setSceneObjects}
