@@ -3,6 +3,9 @@
 import { Plus, Save, Download, Eye, Settings } from "lucide-react"
 import { useRef } from "react"
 
+interface LeftSidebarProps {
+  onSketchSelected: (file: File) => void
+}
 export default function LeftSidebar({ onSketchSelected }) {
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
