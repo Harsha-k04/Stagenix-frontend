@@ -3,38 +3,39 @@
 import { Plus, Save, Download, Eye, Settings } from "lucide-react"
 import { useRef } from "react"
 
-export default function LeftSidebar() {
+export default function LeftSidebar({ onSketchSelected }) {
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const handleFileClick = () => {
-    fileInputRef.current?.click()   // opens upload dialog
+    fileInputRef.current?.click()
+  }
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) onSketchSelected(file)
   }
 
   return (
     <aside className="w-20 glass border-r border-white/10 flex flex-col items-center py-6 gap-6">
-      
-      {/* Hidden file input */}
+
+      {/* hidden upload */}
       <input
+        ref={fileInputRef}
         type="file"
         accept="image/*"
-        ref={fileInputRef}
         className="hidden"
-        id="sketchUpload"
+        onChange={handleFileSelect}
       />
 
-      {/* THE PLUS BUTTON → triggers file upload */}
+      {/* PLUS BUTTON */}
       <button
         onClick={handleFileClick}
         className="p-3 rounded-lg glass border border-white/10 hover:border-primary/50 transition-all duration-300 group relative text-primary"
         title="Upload Sketch"
       >
         <Plus className="w-5 h-5" />
-        <div className="absolute left-full ml-2 px-2 py-1 bg-card text-card-foreground text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-          Upload Sketch
-        </div>
       </button>
 
-      {/* Other sidebar buttons remain unchanged */}
       {[Save, Download, Eye, Settings].map((Icon, index) => (
         <button
           key={index}
@@ -43,7 +44,6 @@ export default function LeftSidebar() {
           <Icon className="w-5 h-5" />
         </button>
       ))}
-
     </aside>
   )
 }
