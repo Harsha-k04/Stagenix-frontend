@@ -5,11 +5,11 @@ import { sendPrompt, uploadImage } from "@/lib/api"
 import { request3DGeneration, checkJobStatus } from "@/lib/api";
 import { API_BASE_URL } from "@/lib/api";
 
-
 interface RightPanelProps {
   isGenerating: boolean
   setIsGenerating: (value: boolean) => void
   setSceneObjects: (objects: any[]) => void
+  onSketchSelected?: (file: File) => void
 }
 
 export default function RightPanel({
@@ -17,58 +17,114 @@ export default function RightPanel({
   setIsGenerating,
   setSceneObjects,
 }: RightPanelProps) {
+
   const [prompt, setPrompt] = useState("")
   const [results, setResults] = useState<any>(null)
 
-  // 🧠 Function for text prompt
- const handleGenerate = async () => {
-  if (!prompt.trim()) return alert("Enter a prompt");
+  // 🔥 SKETCH HANDLER (CALLED FROM LEFT SIDEBAR)
+  const handleSketchUpload = async (file: File) => {
+    setIsGenerating(true)
 
-  setIsGenerating(true);
-  setResults(null);
+    try {
+      const formData = new FormData()
+      formData.append("sketch", file)
 
-  try {
-    // 1️⃣ Ask backend to create job
-    const { job_id } = await request3DGeneration(prompt);
-    console.log("Job created:", job_id);
+      const res = await fetch(`${API_BASE_URL}/api/upload-sketch`, {
+        method: "POST",
+        body: formData,
+      })
 
-    // 2️⃣ Poll job status every 4 seconds
-    const interval = setInterval(async () => {
-      const statusData = await checkJobStatus(job_id);
-      console.log("Status:", statusData);
+      const data = await res.json()
+      console.log("Sketch saved:", data)
 
-      if (statusData.status === "done") {
-        clearInterval(interval);
+      // Create job WITH sketch path
+      const jobData = await request3DGeneration(prompt, {
+        sketch_path: data.sketch_path,
+        use_controlnet: true
+      })
 
-        const glbUrl = `${API_BASE_URL}/result/${job_id}`;
+      const job_id = jobData.job_id
+      console.log("Sketch job created:", job_id)
 
-        // 🔥 Replace sceneObjects with the 3D model returned
-        setSceneObjects([
-          {
-            name: "wedding", // any label
-            position: [0, 0, 0],
-            rotation: [0, 0, 0],
-            glbUrl,      // <<<<<< USE THIS IN CANVAS3D
-          },
-        ]);
+      // Poll status
+      const interval = setInterval(async () => {
+        const statusData = await checkJobStatus(job_id)
 
-        setIsGenerating(false);
-      }
+        if (statusData.status === "done") {
+          clearInterval(interval)
 
-      if (statusData.status === "failed") {
-        clearInterval(interval);
-        setIsGenerating(false);
-        alert("Generation failed.");
-      }
-    }, 4000);
-  } catch (err) {
-    console.error(err);
-    setIsGenerating(false);
+          const glbUrl = `${API_BASE_URL}/result/${job_id}`
+
+          setSceneObjects([
+            {
+              name: "stage",
+              position: [0, 0, 0],
+              rotation: [0, 0, 0],
+              glbUrl,
+            },
+          ])
+
+          setIsGenerating(false)
+        }
+
+        if (statusData.status === "failed") {
+          clearInterval(interval)
+          setIsGenerating(false)
+          alert("Sketch-based generation failed.")
+        }
+      }, 4000)
+
+    } catch (err) {
+      console.error("Sketch error:", err)
+      alert("Sketch upload failed.")
+      setIsGenerating(false)
+    }
   }
-};
 
+  // TEXT–PROMPT GENERATION
+  const handleGenerate = async () => {
+    if (!prompt.trim()) return alert("Enter a prompt")
 
-  // 🧠 Function for image upload
+    setIsGenerating(true)
+    setResults(null)
+
+    try {
+      const { job_id } = await request3DGeneration(prompt)
+      console.log("Job created:", job_id)
+
+      const interval = setInterval(async () => {
+        const statusData = await checkJobStatus(job_id)
+
+        if (statusData.status === "done") {
+          clearInterval(interval)
+
+          const glbUrl = `${API_BASE_URL}/result/${job_id}`
+
+          setSceneObjects([
+            {
+              name: "stage",
+              position: [0, 0, 0],
+              rotation: [0, 0, 0],
+              glbUrl,
+            },
+          ])
+
+          setIsGenerating(false)
+        }
+
+        if (statusData.status === "failed") {
+          clearInterval(interval)
+          setIsGenerating(false)
+        }
+      }, 4000)
+
+    } catch (err) {
+      console.error(err)
+      setIsGenerating(false)
+    }
+  }
+
+  // NORMAL IMAGE SEGMENTATION
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -76,14 +132,10 @@ export default function RightPanel({
     setIsGenerating(true)
     try {
       const data = await uploadImage(file)
-      console.log("Image response:", data)
       setResults(data)
-
-      // ✅ If backend returns objects from segmentation
       if (data.objects) setSceneObjects(data.objects)
     } catch (err) {
-      console.error("Upload error:", err)
-      alert("Failed to upload image.")
+      console.error(err)
     } finally {
       setIsGenerating(false)
     }
@@ -93,15 +145,13 @@ export default function RightPanel({
     <div className="p-4 border-l border-primary/20 flex flex-col h-full bg-card/30">
       <h2 className="text-xl font-semibold mb-4">AI Stage Generator</h2>
 
-      {/* Text Prompt Input */}
       <textarea
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}
-        placeholder="Describe your stage design (e.g. 'a vase and a plant on stage')..."
+        placeholder="Describe your stage design..."
         className="w-full h-32 p-2 border rounded-lg bg-background/50 mb-4"
       />
 
-      {/* Generate Button */}
       <button
         onClick={handleGenerate}
         disabled={isGenerating}
@@ -110,21 +160,13 @@ export default function RightPanel({
         {isGenerating ? "Generating..." : "Generate from Prompt"}
       </button>
 
-      {/* Image Upload Section */}
       <label className="block text-sm font-medium text-muted-foreground mb-2">
         Or upload an image for segmentation:
       </label>
-      <input
-        type="file"
-        accept="image/*"
-        onChange={handleImageUpload}
-        className="mb-4"
-      />
+      <input type="file" accept="image/*" onChange={handleImageUpload} className="mb-4" />
 
-      {/* Backend Result Preview */}
       {results && (
         <div className="mt-4 text-sm text-green-400">
-          ✅ Received response from backend:
           <pre className="bg-black/20 p-2 rounded mt-2 text-xs overflow-auto">
             {JSON.stringify(results, null, 2)}
           </pre>
