@@ -1,6 +1,6 @@
-"use client"
+"use client" 
 
-import { useState } from "react"
+import { useState, forwardRef, useImperativeHandle } from "react"
 import { sendPrompt, uploadImage } from "@/lib/api"
 import { request3DGeneration, checkJobStatus } from "@/lib/api";
 import { API_BASE_URL } from "@/lib/api";
@@ -12,16 +12,19 @@ interface RightPanelProps {
   onSketchSelected?: (file: File) => void
 }
 
-export default function RightPanel({
-  isGenerating,
-  setIsGenerating,
-  setSceneObjects,
-}: RightPanelProps) {
+const RightPanel = forwardRef(function RightPanel(
+  {
+    isGenerating,
+    setIsGenerating,
+    setSceneObjects,
+  }: RightPanelProps,
+  ref
+) {
 
   const [prompt, setPrompt] = useState("")
   const [results, setResults] = useState<any>(null)
 
-  // 🔥 SKETCH HANDLER (CALLED FROM LEFT SIDEBAR)
+  // 🔥 SKETCH HANDLER (CALLED FROM LEFT SIDEBAR → DASHBOARD)
   const handleSketchUpload = async (file: File) => {
     setIsGenerating(true)
 
@@ -81,7 +84,12 @@ export default function RightPanel({
     }
   }
 
-  // TEXT–PROMPT GENERATION
+  // 👉 EXPOSE sketch handler to Dashboard using ref
+  useImperativeHandle(ref, () => ({
+    handleSketchUpload
+  }))
+
+  // TEXT–PROMPT GENERATION (UNCHANGED)
   const handleGenerate = async () => {
     if (!prompt.trim()) return alert("Enter a prompt")
 
@@ -124,7 +132,7 @@ export default function RightPanel({
     }
   }
 
-  // NORMAL IMAGE SEGMENTATION
+  // NORMAL IMAGE SEGMENTATION (UNCHANGED)
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -174,4 +182,6 @@ export default function RightPanel({
       )}
     </div>
   )
-}
+})
+
+export default RightPanel
