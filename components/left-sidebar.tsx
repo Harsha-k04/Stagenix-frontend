@@ -6,7 +6,8 @@ import { useRef } from "react"
 interface LeftSidebarProps {
   onSketchSelected: (file: File) => void
 }
-export default function LeftSidebar({ onSketchSelected }) {
+
+export default function LeftSidebar({ onSketchSelected }: LeftSidebarProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const handleFileClick = () => {
