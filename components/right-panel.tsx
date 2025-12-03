@@ -42,8 +42,10 @@ const RightPanel = forwardRef(function RightPanel(
       const sketchUrl = data.sketch_url
       // Create job WITH sketch path
       const jobData = await request3DGeneration(prompt, {
-        sketch_url: sketchUrl,
-        use_controlnet: true
+        meta: {
+          sketch_url: sketchUrl,
+          use_controlnet: true
+        }
       })
 
       const job_id = jobData.job_id
