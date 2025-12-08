@@ -35,8 +35,7 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
     stage: "/assets/stage/stage.glb",
   };
 
-  // ⭐ CRITICAL FIX: The scale of 5 is now applied in the Python worker.
-  // Set the scale for 'wedding' and 'stage' to 1 1 1 to avoid double-scaling.
+  // The scale for 'wedding' and 'stage' is 1 1 1 because the 5x scaling is now applied in the GLB file.
   const scaleMap: Record<string, string> = {
     pottedplant: "2 2 2",
     vase: "3 3 3",
@@ -68,8 +67,9 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
           )}
         </a-assets>
 
-        {/* Camera (position at 0 1.6 3) */}
-        <a-entity id="cameraRig" position="0 1.6 3">
+        {/* Camera (position changed from 0 1.6 3 to 0 1.6 10 to zoom out) */}
+        {/* ⭐ FIX: Increased Z to 10 to move the camera further back for a better initial view. */}
+        <a-entity id="cameraRig" position="0 1.6 10">
           <a-camera look-controls wasd-controls></a-camera>
         </a-entity>
 
