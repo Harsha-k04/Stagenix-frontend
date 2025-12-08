@@ -35,15 +35,16 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
     stage: "/assets/stage/stage.glb",
   };
 
-  // Kept high to satisfy the request to increase size.
+  // ⭐ CRITICAL FIX: The scale of 5 is now applied in the Python worker.
+  // Set the scale for 'wedding' and 'stage' to 1 1 1 to avoid double-scaling.
   const scaleMap: Record<string, string> = {
     pottedplant: "2 2 2",
     vase: "3 3 3",
-    wedding: "5 5 5",    
-    stage: "5 5 5",
+    wedding: "1 1 1", 
+    stage: "1 1 1",
   };
 
-  // ⭐ CRITICAL FIX: Offset Z by a negative value to place the model forward
+  // Offset Z by a negative value to place the model forward
   const Z_OFFSET = -5; 
 
   return (
@@ -53,15 +54,9 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
         vr-mode-ui="enabled: true"
         renderer="antialias: true; colorManagement: true;"
       >
-        {/* ⭐ LIGHTING FIX: Reduced intensities and added hemisphere light for better shading */}
-        
-        {/* Soft Ambient Light (reduced from 2.0 to 0.5) */}
+        {/* LIGHTING: This setup is good for realistic shading. */}
         <a-entity light="type: ambient; color: #ffffff; intensity: 0.5"></a-entity>
-        
-        {/* Main Directional Light (reduced from 3.0 to 1.5) */}
         <a-entity light="type: directional; color: #ffffff; intensity: 1.5" position="1 4 2"></a-entity>
-
-        {/* Hemisphere Light for soft fill and ground bounce */}
         <a-entity light="type: hemisphere; color: #aaaaaa; groundColor: #333333; intensity: 0.8"></a-entity>
 
 
@@ -82,7 +77,7 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
         {objects.map((o, i) => {
           if (!modelMap[o.name]) return null;
 
-          // ⭐ POSITION FIX: Apply negative Z offset (Z_OFFSET) to bring the model into view
+          // POSITION FIX: Apply negative Z offset (Z_OFFSET) to bring the model into view
           const pos = `${o.position[0] * 1} ${o.position[1]} ${o.position[2] * 1 + Z_OFFSET}`; 
           const rot = `${o.rotation[0]} ${o.rotation[1]} ${o.rotation[2]}`;
 
