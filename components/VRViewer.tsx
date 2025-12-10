@@ -17,31 +17,33 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
 
   useEffect(() => {
     import("aframe")
-      .then((mod) => {
+      .then(() => {
         setReady(true);
         
-        // ⭐ NEW: Custom component to auto-center models and place them on the floor
-        if (!mod.AFRAME.components["auto-center"]) {
-          mod.AFRAME.registerComponent("auto-center", {
+        // ⭐ FIX: Access AFRAME from the global window object to safely register components.
+        const AFRAME = (window as any).AFRAME;
+
+        // Custom component to auto-center models and place them on the floor
+        if (AFRAME && !AFRAME.components["auto-center"]) {
+          AFRAME.registerComponent("auto-center", {
             init: function () {
               this.el.addEventListener("model-loaded", () => {
+                // Accessing THREE objects via window.THREE, which A-Frame exposes
+                const THREE = (window as any).THREE;
                 const mesh = this.el.getObject3D("mesh");
+                
                 if (!mesh) return;
 
                 // 1. Calculate Bounding Box
-                const box = new (window as any).THREE.Box3().setFromObject(mesh);
-                const center = new (window as any).THREE.Vector3();
-                const size = new (window as any).THREE.Vector3();
+                const box = new THREE.Box3().setFromObject(mesh);
+                const center = new THREE.Vector3();
                 box.getCenter(center);
-                box.getSize(size);
-
-                // 2. Calculate Offsets (Center X/Z, Floor Y)
-                const xOffset = -center.x;
-                const yOffset = -box.min.y; // Shift up so the bottom touches 0
-                const zOffset = -center.z;
-
-                // 3. Apply Offset to the mesh geometry
-                mesh.position.set(xOffset, yOffset, zOffset);
+                
+                // 2. Apply Offsets (Center X/Z, Floor Y)
+                // We use box.min.y to shift the model up so the lowest point rests on Y=0
+                mesh.position.x = -center.x;
+                mesh.position.y = -box.min.y; 
+                mesh.position.z = -center.z; 
                 
                 console.log("✅ Auto-centered model in VR");
               });
@@ -63,7 +65,7 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
   const modelMap: Record<string, string> = {
     pottedplant: "/assets/pottedplant/scene.glb",
     vase: "/assets/vase/scene.glb",
-    // We removed the hardcoded 'wedding' URL to prevent 404s
+    // Hardcoded URL removed, relying on glbUrl property
     stage: "/assets/stage/stage.glb",
   };
 
@@ -74,7 +76,7 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
     stage: "1 1 1",
   };
 
-  // Place model 4 meters in front of the camera
+  // Place model 4 meters in front of the camera (negative Z)
   const Z_OFFSET = -4; 
 
   return (
@@ -82,7 +84,6 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
       <a-scene
         embedded
         vr-mode-ui="enabled: true"
-        // ⭐ Enabled physicallyCorrectLights for better quality
         renderer="antialias: true; colorManagement: true; physicallyCorrectLights: true;"
       >
         {/* LIGHTING */}
@@ -105,12 +106,11 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
 
         {/* Models */}
         {objects.map((o, i) => {
-          // ⭐ LOGIC FIX: Prioritize dynamic glbUrl
           const url = o.glbUrl || modelMap[o.name];
           if (!url) return null;
 
-          // Position: Apply Z offset. 
-          // 'auto-center' will handle the precise centering and grounding.
+          // Position: Apply Z offset to bring the object into view.
+          // The auto-center component handles the Y position (grounding).
           const pos = `${o.position[0]} ${o.position[1]} ${o.position[2] + Z_OFFSET}`;
           const rot = `${o.rotation[0]} ${o.rotation[1]} ${o.rotation[2]}`;
           
@@ -123,7 +123,7 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
               position={pos}
               rotation={rot}
               scale={scale}
-              auto-center // 👈 Triggers the centering/grounding logic
+              auto-center // 👈 Applies centering and grounding
               shadow="cast: true; receive: true"
             />
           );
