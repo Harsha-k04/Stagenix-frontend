@@ -72,17 +72,23 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
     pottedplant: "/assets/pottedplant/scene.glb",
     vase: "/assets/vase/scene.glb",
     stage: "/assets/stage/stage.glb",
+    wedding: "/assets/wedding/wedding.glb", // Assuming this is the stage GLB
   };
 
   const scaleMap: Record<string, string> = {
     pottedplant: "2 2 2",
     vase: "3 3 3",
-    wedding: "1 1 1", 
+    // ⭐ FIX: Aggressively scale down the complex stage model. 
+    // It is likely too big, causing the distorted view. Changed from "1 1 1"
+    wedding: "0.2 0.2 0.2", 
     stage: "1 1 1",
   };
 
   // Offset to place objects in front of the camera (0, 1.6, -4)
-  const Z_OFFSET = -4; 
+  // ⭐ ADJUST: Increase Z_OFFSET to push objects further away.
+  const Z_OFFSET = -8; 
+  // ⭐ ADJUST: Initial Camera Z position pushed back to start with a wider view.
+  const INITIAL_CAMERA_Z = 3;
 
   // --- Rendered Scene ---
   return (
@@ -90,8 +96,7 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
       <a-scene
         embedded
         vr-mode-ui="enabled: true"
-        // ⭐ AGGRESSIVE FIX: Explicitly set max samples and use THREE.PCFSoftShadowMap 
-        // to resolve the "THREE.sigmaRadians" warning across different A-Frame versions.
+        // Aggressively set max samples to resolve the "THREE.sigmaRadians" warning.
         renderer="
           antialias: true; 
           colorManagement: true; 
@@ -121,7 +126,8 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
         </a-assets>
 
         {/* Camera Rig (Handles movement and viewing position) */}
-        <a-entity id="cameraRig" position="0 1.6 0">
+        {/* ⭐ ADJUST: Set camera Z position further back to see the large stage. */}
+        <a-entity id="cameraRig" position={`0 1.6 ${INITIAL_CAMERA_Z}`}> 
           <a-camera look-controls wasd-controls></a-camera>
         </a-entity>
         
@@ -146,6 +152,7 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
           // FIX: Add 180-degree rotation to the X-axis to correct glTF models loaded upside down.
           const rotationCorrection = `180 ${o.rotation[1]} ${o.rotation[2]}`;
           
+          // Use the scaled map value
           const scale = scaleMap[o.name] || "1 1 1";
 
           return (
