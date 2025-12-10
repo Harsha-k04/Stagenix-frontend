@@ -90,9 +90,18 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
       <a-scene
         embedded
         vr-mode-ui="enabled: true"
-        // ⭐ FIX: Add shadowMap settings to prevent the "THREE.sigmaRadians" warning.
-        // shadowMap.csm.maxSamples: 10 limits the high-quality soft shadow samples for performance.
-        renderer="antialias: true; colorManagement: true; physicallyCorrectLights: true; shadowMap.csm.maxSamples: 10"
+        // ⭐ AGGRESSIVE FIX: Explicitly set max samples and use THREE.PCFSoftShadowMap 
+        // to resolve the "THREE.sigmaRadians" warning across different A-Frame versions.
+        renderer="
+          antialias: true; 
+          colorManagement: true; 
+          physicallyCorrectLights: true; 
+          shadowMapEnabled: true;
+          shadowMap.type: THREE.PCFSoftShadowMap; 
+          shadowMap.maxSamples: 10;
+          shadowMap.csm.maxSamples: 10;
+          shadowMap.csm.sigma: 1;
+        "
       >
         
         {/* LIGHTING */}
@@ -134,7 +143,7 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
           // Apply Z offset to place the model in view
           const pos = `${o.position[0]} ${o.position[1]} ${o.position[2] + Z_OFFSET}`;
           
-          // ⭐ FIX: Add 180-degree rotation to the X-axis to correct glTF models loaded upside down.
+          // FIX: Add 180-degree rotation to the X-axis to correct glTF models loaded upside down.
           const rotationCorrection = `180 ${o.rotation[1]} ${o.rotation[2]}`;
           
           const scale = scaleMap[o.name] || "1 1 1";
