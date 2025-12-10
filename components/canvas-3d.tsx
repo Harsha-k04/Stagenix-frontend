@@ -31,7 +31,7 @@ export default function Canvas3D({ objects, viewMode }: Canvas3DProps) {
 
     const aspect = mountRef.current.clientWidth / mountRef.current.clientHeight;
     const camera = new THREE.PerspectiveCamera(60, aspect, 0.1, 100);
-    // ⭐ Initial Camera Position: Moved back slightly for a better overview
+    // Initial Camera Position: Moved back slightly for a better overview
     camera.position.set(0, 3, 10); 
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -58,7 +58,6 @@ export default function Canvas3D({ objects, viewMode }: Canvas3DProps) {
     const envTexture = pmremGen.fromScene(new RoomEnvironment(renderer), 2).texture;
     scene.environment = envTexture;
 
-    // Added a single strong directional light and a fill light for simplicity and performance
     const mainLight = new THREE.DirectionalLight(0xffffff, 3.0);
     mainLight.position.set(5, 10, 5);
     mainLight.castShadow = true;
@@ -92,7 +91,6 @@ export default function Canvas3D({ objects, viewMode }: Canvas3DProps) {
       gridHelper.visible = false;
       axesHelper.visible = false;
       plane.visible = false;
-      // Removed debugCube
     }
 
     // --- Model Loading ---
@@ -114,7 +112,7 @@ export default function Canvas3D({ objects, viewMode }: Canvas3DProps) {
           scale = 1.8;
         } 
         
-        // ⭐ FIX: Generated models already have 5x scale and correct orientation applied in Python worker.
+        // Generated models already have 5x scale and correct orientation applied in Python worker.
         else if (obj.glbUrl || obj.name === "stage" || obj.name === "wedding") {
           modelPath = obj.glbUrl || (obj.name === "stage" ? "/assets/stage/stage.glb" : "https://stagenix-backend.onrender.com/model/perfect_stage_corrected.glb");
           scale = 1.0; // Set to neutral scale
@@ -145,10 +143,8 @@ export default function Canvas3D({ objects, viewMode }: Canvas3DProps) {
               }
           });
           
-          // ⭐ CRITICAL FIX: The Python script centers the base mesh. We just need to apply the rotation.
-          // Note: Position is handled by controls/autofit, not by source.position for this simple viewer.
+          // Apply yaw rotation from source data
           if (isDynamicModel) {
-             // Model already has 180 deg rotation from backend, but adding yaw rotation here for manual placement
              model.rotation.y = source.rotation[1] * Math.PI / 180;
           }
 
@@ -157,6 +153,8 @@ export default function Canvas3D({ objects, viewMode }: Canvas3DProps) {
 
           // Update combined bounding box
           if (firstModelLoaded) {
+              // Ensure we re-calculate the box based on the current world position of the model
+              model.updateWorldMatrix(true, true); 
               combinedBox.union(new THREE.Box3().setFromObject(model));
           } else {
               combinedBox.setFromObject(model);
@@ -165,28 +163,38 @@ export default function Canvas3D({ objects, viewMode }: Canvas3DProps) {
           
           loadedCount++;
 
-          // Auto-fit camera after ALL objects are loaded
+          // Auto-fit camera and re-center ALL objects after ALL objects are loaded
           if (loadedCount === expectedCount) {
             
             const center = combinedBox.getCenter(new THREE.Vector3());
             const size = combinedBox.getSize(new THREE.Vector3());
             
-            // Adjust camera to look at center and zoom out based on size
-            const maxDimension = Math.max(size.x, size.y, size.z);
-            const fitDistance = maxDimension / (2 * Math.tan(camera.fov * Math.PI / 360));
-            
-            // Set camera position to see the entire model
-            camera.position.set(center.x, center.y + size.y * 0.5, center.z + fitDistance * 1.5);
-            controls.target.set(center.x, center.y, center.z);
-            controls.update(); // Update controls to look at the new target
-            
-            // Ensure the model is resting on the floor (Y=0)
+            // ⭐ FIX 1: Calculate the offset needed to move the bottom of the combined box to Y=0
             const floorOffset = center.y - size.y / 2;
+            
+            // ⭐ FIX 2: Calculate the horizontal offset needed to center the model on X=0, Z=0
+            const horizontalOffset = new THREE.Vector3(-center.x, -floorOffset, -center.z);
+
+            // Apply the centering and floor offset to all loaded models
             scene.children.forEach(child => {
                 if (loadedObjects.includes(child)) {
-                    child.position.y -= floorOffset;
+                    child.position.add(horizontalOffset);
                 }
             });
+
+            // Recalculate combined box after centering to get new center for camera target
+            combinedBox.setFromObject(scene, true); // Recalculate based on current scene state
+            const newCenter = combinedBox.getCenter(new THREE.Vector3());
+            const newSize = combinedBox.getSize(new THREE.Vector3());
+            
+            // Adjust camera to look at the center and zoom out based on size
+            const maxDimension = Math.max(newSize.x, newSize.y, newSize.z);
+            const fitDistance = maxDimension / (2 * Math.tan(camera.fov * Math.PI / 360));
+            
+            // Set camera position (slightly above the center)
+            camera.position.set(newCenter.x, newCenter.y + newSize.y * 0.25, newCenter.z + fitDistance * 1.5);
+            controls.target.set(newCenter.x, newCenter.y, newCenter.z);
+            controls.update(); 
           }
         },
         undefined,
@@ -220,7 +228,8 @@ export default function Canvas3D({ objects, viewMode }: Canvas3DProps) {
       window.removeEventListener("resize", handleResize);
       cancelAnimationFrame(rafId);
       
-      // ... (Cleanup logic remains the same for brevity)
+      loadedObjects.forEach(obj => { scene.remove(obj); });
+      
       if (mountRef.current && renderer.domElement.parentElement === mountRef.current) {
          mountRef.current.removeChild(renderer.domElement);
       }
