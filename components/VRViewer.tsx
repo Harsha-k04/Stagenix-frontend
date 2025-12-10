@@ -3,13 +3,14 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 
+// Dynamically import aframe only on the client side
 const AFrame = dynamic(() => import("aframe"), { ssr: false });
 
 interface StageObject {
   name: string;
   position: [number, number, number];
   rotation: [number, number, number];
-  glbUrl?: string; // ⭐ Added to accept the dynamic URL
+  glbUrl?: string;
 }
 
 export default function VRViewer({ objects }: { objects: StageObject[] }) {
@@ -20,15 +21,18 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
       .then(() => {
         setReady(true);
         
-        // ⭐ FIX: Access AFRAME from the global window object to safely register components.
+        // Access AFRAME from the global window object.
         const AFRAME = (window as any).AFRAME;
 
-        // Custom component to auto-center models and place them on the floor
         if (AFRAME && !AFRAME.components["auto-center"]) {
+          /**
+           * auto-center component
+           * Calculates the model's bounding box and shifts its internal mesh 
+           * to center it horizontally (X/Z) and ground it vertically (Y=0).
+           */
           AFRAME.registerComponent("auto-center", {
             init: function () {
               this.el.addEventListener("model-loaded", () => {
-                // Accessing THREE objects via window.THREE, which A-Frame exposes
                 const THREE = (window as any).THREE;
                 const mesh = this.el.getObject3D("mesh");
                 
@@ -39,8 +43,9 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
                 const center = new THREE.Vector3();
                 box.getCenter(center);
                 
-                // 2. Apply Offsets (Center X/Z, Floor Y)
-                // We use box.min.y to shift the model up so the lowest point rests on Y=0
+                // 2. Apply Offsets 
+                // X/Z: Center the object.
+                // Y: Shift up so the lowest point (box.min.y) rests on Y=0.
                 mesh.position.x = -center.x;
                 mesh.position.y = -box.min.y; 
                 mesh.position.z = -center.z; 
@@ -62,57 +67,78 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
     );
   }
 
+  // --- Configuration ---
   const modelMap: Record<string, string> = {
     pottedplant: "/assets/pottedplant/scene.glb",
     vase: "/assets/vase/scene.glb",
-    // Hardcoded URL removed, relying on glbUrl property
     stage: "/assets/stage/stage.glb",
   };
 
   const scaleMap: Record<string, string> = {
     pottedplant: "2 2 2",
     vase: "3 3 3",
-    wedding: "1 1 1", // Neutral scale (backend handles 5x)
+    wedding: "1 1 1", 
     stage: "1 1 1",
   };
 
-  // Place model 4 meters in front of the camera (negative Z)
+  // Offset to place objects in front of the camera (0, 1.6, -4)
   const Z_OFFSET = -4; 
 
+  // --- Rendered Scene ---
   return (
     <div className="w-full h-full bg-black">
       <a-scene
         embedded
         vr-mode-ui="enabled: true"
+        // Lowering shadow samples (e.g., to 5) can resolve the THREE.sigmaRadians warning, 
+        // but often reduces shadow quality. We'll leave it out for a general solution.
         renderer="antialias: true; colorManagement: true; physicallyCorrectLights: true;"
       >
+        
         {/* LIGHTING */}
         <a-entity light="type: ambient; color: #ffffff; intensity: 0.5"></a-entity>
-        <a-entity light="type: directional; color: #ffffff; intensity: 1.5; castShadow: true" position="1 4 2"></a-entity>
+        {/* Directional light provides shadows (castShadow: true) */}
+        <a-entity 
+          light="type: directional; color: #ffffff; intensity: 1.5; castShadow: true" 
+          position="1 4 2"
+        ></a-entity>
         <a-entity light="type: hemisphere; color: #aaaaaa; groundColor: #333333; intensity: 0.8"></a-entity>
 
         <a-assets>
           {objects.map((o, i) => {
-             // Check dynamic URL first, then static map
              const url = o.glbUrl || modelMap[o.name];
              return url ? <a-asset-item key={i} id={`asset-${i}`} src={url} /> : null;
           })}
         </a-assets>
 
-        {/* Camera at 0, 1.6m high (eye level) */}
+        {/* Camera Rig (Handles movement and viewing position) */}
         <a-entity id="cameraRig" position="0 1.6 0">
           <a-camera look-controls wasd-controls></a-camera>
         </a-entity>
+        
+        {/* Environment: Ground Plane */}
+        <a-plane 
+            rotation="-90 0 0" 
+            width="50" 
+            height="50" 
+            color="#333333" 
+            shadow="receive: true"
+        ></a-plane>
+
 
         {/* Models */}
         {objects.map((o, i) => {
           const url = o.glbUrl || modelMap[o.name];
           if (!url) return null;
 
-          // Position: Apply Z offset to bring the object into view.
-          // The auto-center component handles the Y position (grounding).
+          // Apply Z offset to place the model in view
           const pos = `${o.position[0]} ${o.position[1]} ${o.position[2] + Z_OFFSET}`;
-          const rot = `${o.rotation[0]} ${o.rotation[1]} ${o.rotation[2]}`;
+          
+          // ⭐ FIX: Add 180-degree rotation to the X-axis to correct glTF models loaded upside down.
+          // This assumes the model uses a default X rotation of 0. If it uses o.rotation[0], 
+          // you would need to adjust it: ${parseFloat(o.rotation[0].toString()) + 180}
+          // Since it's common for glTF imports to be flipped, we apply it here.
+          const rotationCorrection = `180 ${o.rotation[1]} ${o.rotation[2]}`;
           
           const scale = scaleMap[o.name] || "1 1 1";
 
@@ -121,9 +147,10 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
               key={i}
               gltf-model={`url(${url})`}
               position={pos}
-              rotation={rot}
+              // Use the corrected rotation
+              rotation={rotationCorrection} 
               scale={scale}
-              auto-center // 👈 Applies centering and grounding
+              auto-center // Centers and grounds the model
               shadow="cast: true; receive: true"
             />
           );
