@@ -21,14 +21,11 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
       .then(() => {
         setReady(true);
         
-        // Access AFRAME from the global window object.
         const AFRAME = (window as any).AFRAME;
 
         if (AFRAME && !AFRAME.components["auto-center"]) {
           /**
-           * auto-center component
-           * Calculates the model's bounding box and shifts its internal mesh 
-           * to center it horizontally (X/Z) and ground it vertically (Y=0).
+           * auto-center component: Lifts the mesh slightly for ground visibility.
            */
           AFRAME.registerComponent("auto-center", {
             init: function () {
@@ -38,16 +35,12 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
                 
                 if (!mesh) return;
 
-                // 1. Calculate Bounding Box
                 const box = new THREE.Box3().setFromObject(mesh);
                 const center = new THREE.Vector3();
                 box.getCenter(center);
                 
-                // 2. Apply Offsets 
-                // X/Z: Center the object.
-                // Y: Shift up so the lowest point (box.min.y) rests on Y=0.
                 mesh.position.x = -center.x;
-                // FIX: Added small lift for visibility above the ground plane.
+                // FIX: Added small lift (0.005) for visibility above the ground plane.
                 mesh.position.y = -box.min.y + 0.005; 
                 mesh.position.z = -center.z; 
                 
@@ -79,14 +72,16 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
   const scaleMap: Record<string, string> = {
     pottedplant: "2 2 2",
     vase: "3 3 3",
-    // Extreme 1000x scaling reduction for the giant stage model. 
+    // CRITICAL: Extreme 1000x scaling reduction. 
     wedding: "0.001 0.001 0.001", 
     stage: "1 1 1",
   };
 
-  // ⭐ CRITICAL CHANGE: Removing Z_OFFSET and relying only on camera position.
+  // Model positioned at origin (0, 0, 0).
   const Z_OFFSET = 0; 
-  // ⭐ CRITICAL ADJUSTMENT: Camera Z position pushed back to 50 meters, pointing toward Z=0.
+  
+  // ⭐ CRITICAL ADJUSTMENT: Camera Z position set to 50 meters, looking towards the origin.
+  // This is the starting position of the *cameraRig*
   const INITIAL_CAMERA_Z = 50; 
   const INITIAL_CAMERA_Y = 2; 
 
@@ -96,7 +91,6 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
       <a-scene
         embedded
         vr-mode-ui="enabled: true"
-        // Shadow fixes to prevent console warnings
         renderer="
           antialias: true; 
           colorManagement: true; 
@@ -111,7 +105,6 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
         
         {/* LIGHTING */}
         <a-entity light="type: ambient; color: #ffffff; intensity: 0.5"></a-entity>
-        {/* Directional light provides shadows (castShadow: true) */}
         <a-entity 
           light="type: directional; color: #ffffff; intensity: 1.5; castShadow: true" 
           position="1 4 2"
@@ -126,20 +119,22 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
         </a-assets>
 
         {/* Camera Rig (Handles movement and viewing position) */}
-        {/* Camera positioned far back (Z=50) looking towards the origin (0, 0, 0) */}
+        {/* The camera rig defines the user's initial location in the world (far back at Z=50) */}
         <a-entity id="cameraRig" position={`0 ${INITIAL_CAMERA_Y} ${INITIAL_CAMERA_Z}`}> 
-          <a-camera 
-            look-controls 
-            wasd-controls
-            // Set far clipping plane high
-            far="5000"
-          ></a-camera>
+            {/* Camera defines viewing properties and controls */}
+            <a-camera 
+                look-controls 
+                wasd-controls
+                // CRITICAL FIX: Set near clip extremely low to avoid cutting off geometry that is too close.
+                near="0.0001" 
+                far="5000"
+            ></a-camera>
         </a-entity>
         
         {/* Environment: Ground Plane */}
         <a-plane 
             rotation="-90 0 0" 
-            width="500" // Increased size to cover vast distances
+            width="500" 
             height="500" 
             color="#333333" 
             shadow="receive: true"
@@ -151,12 +146,10 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
           const url = o.glbUrl || modelMap[o.name];
           if (!url) return null;
 
-          // ⭐ CRITICAL CHANGE: Use the object's original position, 
-          // but without the Z_OFFSET, forcing it close to the origin (0, 0, 0).
-          // The camera at Z=50 will now be looking directly at this object.
-          const pos = `${o.position[0]} ${o.position[1]} ${o.position[2]}`;
+          // Model positioned at its original position (near the world origin)
+          const pos = `${o.position[0]} ${o.position[1]} ${o.position[2] + Z_OFFSET}`;
           
-          // FIX: Add 180-degree rotation to the X-axis to correct glTF models loaded upside down.
+          // Rotation fix
           const rotationCorrection = `180 ${o.rotation[1]} ${o.rotation[2]}`;
           
           // Use the scaled map value
@@ -167,10 +160,9 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
               key={i}
               gltf-model={`url(${url})`}
               position={pos}
-              // Use the corrected rotation
               rotation={rotationCorrection} 
               scale={scale}
-              auto-center // Centers and grounds the model (now with a small lift)
+              auto-center // Centers and grounds the model
               shadow="cast: true; receive: true"
             />
           );
