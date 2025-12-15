@@ -47,8 +47,7 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
                 // X/Z: Center the object.
                 // Y: Shift up so the lowest point (box.min.y) rests on Y=0.
                 mesh.position.x = -center.x;
-                // FIX: Instead of just -box.min.y, we add a small positive offset (0.005) 
-                // to lift the model slightly above the virtual ground plane.
+                // FIX: Added small lift for visibility above the ground plane.
                 mesh.position.y = -box.min.y + 0.005; 
                 mesh.position.z = -center.z; 
                 
@@ -85,11 +84,10 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
     stage: "1 1 1",
   };
 
-  // Offset to place objects in front of the camera (0, 1.6, -Z_OFFSET)
-  const Z_OFFSET = -12; 
-  // Initial Camera Z position pushed back to 50 meters.
-  const INITIAL_CAMERA_Z = 50;
-  // Adjusted camera eye level.
+  // ⭐ CRITICAL CHANGE: Removing Z_OFFSET and relying only on camera position.
+  const Z_OFFSET = 0; 
+  // ⭐ CRITICAL ADJUSTMENT: Camera Z position pushed back to 50 meters, pointing toward Z=0.
+  const INITIAL_CAMERA_Z = 50; 
   const INITIAL_CAMERA_Y = 2; 
 
   // --- Rendered Scene ---
@@ -128,12 +126,12 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
         </a-assets>
 
         {/* Camera Rig (Handles movement and viewing position) */}
-        {/* Set camera Z position very far back and slightly higher Y. */}
+        {/* Camera positioned far back (Z=50) looking towards the origin (0, 0, 0) */}
         <a-entity id="cameraRig" position={`0 ${INITIAL_CAMERA_Y} ${INITIAL_CAMERA_Z}`}> 
           <a-camera 
             look-controls 
             wasd-controls
-            // Set far clipping plane higher to ensure large models don't disappear
+            // Set far clipping plane high
             far="5000"
           ></a-camera>
         </a-entity>
@@ -153,8 +151,10 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
           const url = o.glbUrl || modelMap[o.name];
           if (!url) return null;
 
-          // Apply Z offset to place the model in view
-          const pos = `${o.position[0]} ${o.position[1]} ${o.position[2] + Z_OFFSET}`;
+          // ⭐ CRITICAL CHANGE: Use the object's original position, 
+          // but without the Z_OFFSET, forcing it close to the origin (0, 0, 0).
+          // The camera at Z=50 will now be looking directly at this object.
+          const pos = `${o.position[0]} ${o.position[1]} ${o.position[2]}`;
           
           // FIX: Add 180-degree rotation to the X-axis to correct glTF models loaded upside down.
           const rotationCorrection = `180 ${o.rotation[1]} ${o.rotation[2]}`;
