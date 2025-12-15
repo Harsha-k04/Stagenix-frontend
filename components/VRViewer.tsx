@@ -72,23 +72,23 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
     pottedplant: "/assets/pottedplant/scene.glb",
     vase: "/assets/vase/scene.glb",
     stage: "/assets/stage/stage.glb",
-    wedding: "/assets/wedding/wedding.glb", // Assuming this is the stage GLB
+    wedding: "/assets/wedding/wedding.glb", 
   };
 
   const scaleMap: Record<string, string> = {
     pottedplant: "2 2 2",
     vase: "3 3 3",
-    // ⭐ FIX: Aggressively scale down the complex stage model. 
-    // It is likely too big, causing the distorted view. Changed from "1 1 1"
-    wedding: "0.2 0.2 0.2", 
+    // ⭐ CRITICAL FIX: Further scaling down the large stage model. 
+    // It seems to be 10x too large, so a scale of 0.1 is often necessary.
+    wedding: "0.1 0.1 0.1", 
     stage: "1 1 1",
   };
 
-  // Offset to place objects in front of the camera (0, 1.6, -4)
+  // Offset to place objects in front of the camera (0, 1.6, -Z_OFFSET)
   // ⭐ ADJUST: Increase Z_OFFSET to push objects further away.
-  const Z_OFFSET = -8; 
+  const Z_OFFSET = -12; 
   // ⭐ ADJUST: Initial Camera Z position pushed back to start with a wider view.
-  const INITIAL_CAMERA_Z = 3;
+  const INITIAL_CAMERA_Z = 5;
 
   // --- Rendered Scene ---
   return (
@@ -126,9 +126,14 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
         </a-assets>
 
         {/* Camera Rig (Handles movement and viewing position) */}
-        {/* ⭐ ADJUST: Set camera Z position further back to see the large stage. */}
+        {/* ⭐ ADJUST: Set camera Z position further back and far clip to handle huge scenes. */}
         <a-entity id="cameraRig" position={`0 1.6 ${INITIAL_CAMERA_Z}`}> 
-          <a-camera look-controls wasd-controls></a-camera>
+          <a-camera 
+            look-controls 
+            wasd-controls
+            // Set far clipping plane higher to ensure large models don't disappear
+            far="1000"
+          ></a-camera>
         </a-entity>
         
         {/* Environment: Ground Plane */}
