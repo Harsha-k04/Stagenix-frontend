@@ -78,16 +78,15 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
   const scaleMap: Record<string, string> = {
     pottedplant: "2 2 2",
     vase: "3 3 3",
-    // ⭐ CRITICAL FIX: Aggressive scaling for the large stage model (100x reduction). 
-    wedding: "0.01 0.01 0.01", 
+    // ⭐ CRITICAL FIX: Extreme 1000x scaling reduction for the giant stage model. 
+    wedding: "0.001 0.001 0.001", 
     stage: "1 1 1",
   };
 
   // Offset to place objects in front of the camera (0, 1.6, -Z_OFFSET)
-  // ⭐ ADJUST: Increase Z_OFFSET to push objects far away from the camera's initial view.
   const Z_OFFSET = -12; 
-  // ⭐ ADJUST: Initial Camera Z position pushed back significantly to start outside the giant model.
-  const INITIAL_CAMERA_Z = 15;
+  // ⭐ CRITICAL ADJUSTMENT: Initial Camera Z position pushed back to 50 meters.
+  const INITIAL_CAMERA_Z = 50;
 
   // --- Rendered Scene ---
   return (
@@ -125,21 +124,21 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
         </a-assets>
 
         {/* Camera Rig (Handles movement and viewing position) */}
-        {/* Adjusted Z position and far clip to handle huge scenes. */}
+        {/* Set camera Z position very far back. */}
         <a-entity id="cameraRig" position={`0 1.6 ${INITIAL_CAMERA_Z}`}> 
           <a-camera 
             look-controls 
             wasd-controls
             // Set far clipping plane higher to ensure large models don't disappear
-            far="1000"
+            far="5000"
           ></a-camera>
         </a-entity>
         
         {/* Environment: Ground Plane */}
         <a-plane 
             rotation="-90 0 0" 
-            width="50" 
-            height="50" 
+            width="500" // Increased size to cover vast distances
+            height="500" 
             color="#333333" 
             shadow="receive: true"
         ></a-plane>
