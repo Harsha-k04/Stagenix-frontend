@@ -72,16 +72,15 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
   const scaleMap: Record<string, string> = {
     pottedplant: "2 2 2",
     vase: "3 3 3",
-    // CRITICAL: Extreme 1000x scaling reduction. 
-    wedding: "0.001 0.001 0.001", 
+    // ⭐ CRITICAL CHANGE: Extreme 100,000x scaling reduction. 
+    wedding: "0.00001 0.00001 0.00001", // Scale reduced from 0.001 to 0.00001
     stage: "1 1 1",
   };
 
   // Model positioned at origin (0, 0, 0).
   const Z_OFFSET = 0; 
   
-  // ⭐ CRITICAL ADJUSTMENT: Camera Z position set to 50 meters, looking towards the origin.
-  // This is the starting position of the *cameraRig*
+  // CRITICAL ADJUSTMENT: Camera Z position set to 50 meters, looking towards the origin.
   const INITIAL_CAMERA_Z = 50; 
   const INITIAL_CAMERA_Y = 2; 
 
