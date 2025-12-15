@@ -78,17 +78,16 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
   const scaleMap: Record<string, string> = {
     pottedplant: "2 2 2",
     vase: "3 3 3",
-    // ⭐ CRITICAL FIX: Further scaling down the large stage model. 
-    // It seems to be 10x too large, so a scale of 0.1 is often necessary.
-    wedding: "0.1 0.1 0.1", 
+    // ⭐ CRITICAL FIX: Aggressive scaling for the large stage model (100x reduction). 
+    wedding: "0.01 0.01 0.01", 
     stage: "1 1 1",
   };
 
   // Offset to place objects in front of the camera (0, 1.6, -Z_OFFSET)
-  // ⭐ ADJUST: Increase Z_OFFSET to push objects further away.
+  // ⭐ ADJUST: Increase Z_OFFSET to push objects far away from the camera's initial view.
   const Z_OFFSET = -12; 
-  // ⭐ ADJUST: Initial Camera Z position pushed back to start with a wider view.
-  const INITIAL_CAMERA_Z = 5;
+  // ⭐ ADJUST: Initial Camera Z position pushed back significantly to start outside the giant model.
+  const INITIAL_CAMERA_Z = 15;
 
   // --- Rendered Scene ---
   return (
@@ -96,7 +95,7 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
       <a-scene
         embedded
         vr-mode-ui="enabled: true"
-        // Aggressively set max samples to resolve the "THREE.sigmaRadians" warning.
+        // Shadow fixes to prevent console warnings
         renderer="
           antialias: true; 
           colorManagement: true; 
@@ -126,7 +125,7 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
         </a-assets>
 
         {/* Camera Rig (Handles movement and viewing position) */}
-        {/* ⭐ ADJUST: Set camera Z position further back and far clip to handle huge scenes. */}
+        {/* Adjusted Z position and far clip to handle huge scenes. */}
         <a-entity id="cameraRig" position={`0 1.6 ${INITIAL_CAMERA_Z}`}> 
           <a-camera 
             look-controls 
