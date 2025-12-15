@@ -47,10 +47,12 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
                 // X/Z: Center the object.
                 // Y: Shift up so the lowest point (box.min.y) rests on Y=0.
                 mesh.position.x = -center.x;
-                mesh.position.y = -box.min.y; 
+                // FIX: Instead of just -box.min.y, we add a small positive offset (0.005) 
+                // to lift the model slightly above the virtual ground plane.
+                mesh.position.y = -box.min.y + 0.005; 
                 mesh.position.z = -center.z; 
                 
-                console.log("✅ Auto-centered model in VR");
+                console.log("✅ Auto-centered model in VR, with a small lift.");
               });
             },
           });
@@ -78,15 +80,17 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
   const scaleMap: Record<string, string> = {
     pottedplant: "2 2 2",
     vase: "3 3 3",
-    // ⭐ CRITICAL FIX: Extreme 1000x scaling reduction for the giant stage model. 
+    // Extreme 1000x scaling reduction for the giant stage model. 
     wedding: "0.001 0.001 0.001", 
     stage: "1 1 1",
   };
 
   // Offset to place objects in front of the camera (0, 1.6, -Z_OFFSET)
   const Z_OFFSET = -12; 
-  // ⭐ CRITICAL ADJUSTMENT: Initial Camera Z position pushed back to 50 meters.
+  // Initial Camera Z position pushed back to 50 meters.
   const INITIAL_CAMERA_Z = 50;
+  // Adjusted camera eye level.
+  const INITIAL_CAMERA_Y = 2; 
 
   // --- Rendered Scene ---
   return (
@@ -124,8 +128,8 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
         </a-assets>
 
         {/* Camera Rig (Handles movement and viewing position) */}
-        {/* Set camera Z position very far back. */}
-        <a-entity id="cameraRig" position={`0 1.6 ${INITIAL_CAMERA_Z}`}> 
+        {/* Set camera Z position very far back and slightly higher Y. */}
+        <a-entity id="cameraRig" position={`0 ${INITIAL_CAMERA_Y} ${INITIAL_CAMERA_Z}`}> 
           <a-camera 
             look-controls 
             wasd-controls
@@ -166,7 +170,7 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
               // Use the corrected rotation
               rotation={rotationCorrection} 
               scale={scale}
-              auto-center // Centers and grounds the model
+              auto-center // Centers and grounds the model (now with a small lift)
               shadow="cast: true; receive: true"
             />
           );
