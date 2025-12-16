@@ -27,7 +27,9 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
           AFRAME.registerComponent("auto-center", {
             init: function () {
               this.el.addEventListener("model-loaded", () => {
-                const THREE = (window as any).THREE;
+                // ✅ FIX: use A-Frame's THREE instance
+                const THREE = (window as any).AFRAME.THREE;
+
                 const obj = this.el.object3D;
                 if (!obj) return;
 
@@ -36,13 +38,18 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
                 const box = new THREE.Box3().setFromObject(obj);
                 const size = new THREE.Vector3();
                 const center = new THREE.Vector3();
+
                 box.getSize(size);
                 box.getCenter(center);
 
+                // Center horizontally
                 obj.position.x -= center.x;
                 obj.position.z -= center.z;
+
+                // Ground vertically
                 obj.position.y -= box.min.y;
 
+                // Normalize scale for VR
                 const maxDim = Math.max(size.x, size.y, size.z);
                 const scale = 3 / maxDim;
                 obj.scale.set(scale, scale, scale);
@@ -52,7 +59,7 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
                 console.log("✅ model-loaded fired, VR normalization done");
               });
 
-              // 🔴 IMPORTANT: LOG FAILURES
+              // Log model load failures
               this.el.addEventListener("model-error", (e: any) => {
                 console.error("❌ GLB failed to load:", e);
               });
@@ -106,7 +113,7 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
         <a-entity light="type: directional; intensity: 1.2" position="2 5 3" />
         <a-entity light="type: hemisphere; intensity: 0.6" />
 
-        {/* ASSETS (ADD crossorigin) */}
+        {/* ASSETS */}
         <a-assets>
           {objects.map((o, i) => {
             const url = o.glbUrl || modelMap[o.name];
