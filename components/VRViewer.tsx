@@ -24,53 +24,37 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
         const AFRAME = (window as any).AFRAME;
 
         if (AFRAME && !AFRAME.components["auto-center"]) {
-          /**
-           * auto-center component:
-           * - Centers model (FULL object3D, not just mesh)
-           * - Grounds model on Y = 0
-           * - Auto-scales model to VR-friendly size
-           * - Matches Canvas3D bounding-box logic
-           */
           AFRAME.registerComponent("auto-center", {
             init: function () {
               this.el.addEventListener("model-loaded", () => {
                 const THREE = (window as any).THREE;
-
-                // IMPORTANT FIX: operate on full object3D
                 const obj = this.el.object3D;
                 if (!obj) return;
 
-                // Force world matrix update (CRITICAL)
                 obj.updateMatrixWorld(true);
 
                 const box = new THREE.Box3().setFromObject(obj);
                 const size = new THREE.Vector3();
                 const center = new THREE.Vector3();
-
                 box.getSize(size);
                 box.getCenter(center);
 
-                // ---- CENTERING (matches Canvas3D) ----
                 obj.position.x -= center.x;
                 obj.position.z -= center.z;
-
-                // ---- GROUNDING ----
                 obj.position.y -= box.min.y;
 
-                // ---- AUTO SCALE ----
                 const maxDim = Math.max(size.x, size.y, size.z);
-                const TARGET_SIZE = 3; // meters (human-scale VR)
-                const scaleFactor = TARGET_SIZE / maxDim;
-
-                obj.scale.set(
-                  scaleFactor,
-                  scaleFactor,
-                  scaleFactor
-                );
+                const scale = 3 / maxDim;
+                obj.scale.set(scale, scale, scale);
 
                 obj.updateMatrixWorld(true);
 
-                console.log("✅ VR model centered, grounded & scaled correctly");
+                console.log("✅ model-loaded fired, VR normalization done");
+              });
+
+              // 🔴 IMPORTANT: LOG FAILURES
+              this.el.addEventListener("model-error", (e: any) => {
+                console.error("❌ GLB failed to load:", e);
               });
             },
           });
@@ -87,7 +71,6 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
     );
   }
 
-  // --- Configuration ---
   const modelMap: Record<string, string> = {
     pottedplant: "/assets/pottedplant/scene.glb",
     vase: "/assets/vase/scene.glb",
@@ -98,7 +81,7 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
   const scaleMap: Record<string, string> = {
     pottedplant: "2 2 2",
     vase: "3 3 3",
-    wedding: "0.01 0.01 0.01", // overridden by auto-center for generated stages
+    wedding: "0.01 0.01 0.01",
     stage: "1 1 1",
   };
 
@@ -116,50 +99,35 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
           colorManagement: true;
           physicallyCorrectLights: true;
           shadowMapEnabled: true;
-          shadowMap.type: THREE.PCFSoftShadowMap;
-          shadowMap.maxSamples: 10;
-          shadowMap.csm.maxSamples: 10;
-          shadowMap.csm.sigma: 1;
         "
       >
         {/* LIGHTING */}
-        <a-entity light="type: ambient; color: #ffffff; intensity: 0.8" />
-        <a-entity
-          light="type: directional; color: #ffffff; intensity: 1.2; castShadow: true"
-          position="2 5 3"
-        />
-        <a-entity
-          light="type: hemisphere; color: #aaaaaa; groundColor: #333333; intensity: 0.6"
-        />
+        <a-entity light="type: ambient; intensity: 0.8" />
+        <a-entity light="type: directional; intensity: 1.2" position="2 5 3" />
+        <a-entity light="type: hemisphere; intensity: 0.6" />
 
-        {/* ASSETS */}
+        {/* ASSETS (ADD crossorigin) */}
         <a-assets>
           {objects.map((o, i) => {
             const url = o.glbUrl || modelMap[o.name];
             return url ? (
-              <a-asset-item key={i} id={`asset-${i}`} src={url} />
+              <a-asset-item
+                key={i}
+                id={`asset-${i}`}
+                src={url}
+                crossorigin="anonymous"
+              />
             ) : null;
           })}
         </a-assets>
 
         {/* CAMERA */}
-        <a-entity id="cameraRig" position={`0 ${INITIAL_CAMERA_Y} ${INITIAL_CAMERA_Z}`}>
-          <a-camera
-            look-controls
-            wasd-controls
-            near="0.01"
-            far="5000"
-          />
+        <a-entity position={`0 ${INITIAL_CAMERA_Y} ${INITIAL_CAMERA_Z}`}>
+          <a-camera look-controls wasd-controls />
         </a-entity>
 
         {/* GROUND */}
-        <a-plane
-          rotation="-90 0 0"
-          width="500"
-          height="500"
-          color="#333333"
-          shadow="receive: true"
-        />
+        <a-plane rotation="-90 0 0" width="500" height="500" color="#333" />
 
         {/* MODELS */}
         {objects.map((o, i) => {
@@ -175,14 +143,12 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
               rotation={rot}
               scale={scale}
               auto-center
-              shadow="cast: true; receive: true"
             />
           );
         })}
 
         {/* DEBUG */}
         <a-box position="0 1 -3" color="red" />
-
         <a-sky color="#151515" />
       </a-scene>
     </div>
