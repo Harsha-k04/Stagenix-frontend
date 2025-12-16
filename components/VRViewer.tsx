@@ -25,25 +25,41 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
 
         if (AFRAME && !AFRAME.components["auto-center"]) {
           /**
-           * auto-center component: Lifts the mesh slightly for ground visibility.
+           * auto-center component:
+           * - Centers model
+           * - Grounds model on Y=0
+           * - Auto-scales model to human VR size
            */
           AFRAME.registerComponent("auto-center", {
             init: function () {
               this.el.addEventListener("model-loaded", () => {
                 const THREE = (window as any).THREE;
                 const mesh = this.el.getObject3D("mesh");
-
                 if (!mesh) return;
 
+                // --- Bounding box ---
                 const box = new THREE.Box3().setFromObject(mesh);
+                const size = new THREE.Vector3();
                 const center = new THREE.Vector3();
+                box.getSize(size);
                 box.getCenter(center);
 
+                // --- Center model ---
                 mesh.position.x = -center.x;
-                mesh.position.y = -box.min.y + 0.01; // small ground lift
+                mesh.position.y = -box.min.y;
                 mesh.position.z = -center.z;
 
-                console.log("✅ Auto-centered model in VR");
+                // --- Auto-scale (MATCHES Canvas3D logic conceptually) ---
+                const maxDim = Math.max(size.x, size.y, size.z);
+                const TARGET_SIZE = 3; // meters in VR (stage-friendly)
+                const scale = TARGET_SIZE / maxDim;
+
+                this.el.setAttribute(
+                  "scale",
+                  `${scale} ${scale} ${scale}`
+                );
+
+                console.log("✅ Auto-centered & auto-scaled model for VR");
               });
             },
           });
@@ -71,7 +87,7 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
   const scaleMap: Record<string, string> = {
     pottedplant: "2 2 2",
     vase: "3 3 3",
-    // FIXED: realistic scale (was invisible before)
+    // Kept for safety, but auto-center overrides for large stages
     wedding: "0.01 0.01 0.01",
     stage: "1 1 1",
   };
@@ -79,7 +95,7 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
   // Keep offset but ensure visibility
   const Z_OFFSET = -3;
 
-  // FIXED: camera was way too far
+  // Camera setup (human eye height)
   const INITIAL_CAMERA_Z = 5;
   const INITIAL_CAMERA_Y = 1.6;
 
@@ -111,7 +127,9 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
         <a-assets>
           {objects.map((o, i) => {
             const url = o.glbUrl || modelMap[o.name];
-            return url ? <a-asset-item key={i} id={`asset-${i}`} src={url} /> : null;
+            return url ? (
+              <a-asset-item key={i} id={`asset-${i}`} src={url} />
+            ) : null;
           })}
         </a-assets>
 
@@ -125,7 +143,7 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
           ></a-camera>
         </a-entity>
 
-        {/* Environment: Ground Plane */}
+        {/* Ground */}
         <a-plane
           rotation="-90 0 0"
           width="500"
@@ -140,10 +158,7 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
           if (!url) return null;
 
           const pos = `${o.position[0]} ${o.position[1]} ${o.position[2] + Z_OFFSET}`;
-
-          // FIXED: stop forcing 180° flip
           const rotationCorrection = `${o.rotation[0]} ${o.rotation[1]} ${o.rotation[2]}`;
-
           const scale = scaleMap[o.name] || "1 1 1";
 
           return (
@@ -159,7 +174,7 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
           );
         })}
 
-        {/* Debug reference (DO NOT REMOVE – helps visibility) */}
+        {/* Debug reference */}
         <a-box position="0 1 -3" color="red"></a-box>
 
         <a-sky color="#151515"></a-sky>
