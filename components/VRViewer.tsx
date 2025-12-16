@@ -26,40 +26,51 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
         if (AFRAME && !AFRAME.components["auto-center"]) {
           /**
            * auto-center component:
-           * - Centers model
-           * - Grounds model
+           * - Centers model (FULL object3D, not just mesh)
+           * - Grounds model on Y = 0
            * - Auto-scales model to VR-friendly size
+           * - Matches Canvas3D bounding-box logic
            */
           AFRAME.registerComponent("auto-center", {
             init: function () {
               this.el.addEventListener("model-loaded", () => {
                 const THREE = (window as any).THREE;
-                const mesh = this.el.getObject3D("mesh");
-                if (!mesh) return;
 
-                const box = new THREE.Box3().setFromObject(mesh);
+                // IMPORTANT FIX: operate on full object3D
+                const obj = this.el.object3D;
+                if (!obj) return;
+
+                // Force world matrix update (CRITICAL)
+                obj.updateMatrixWorld(true);
+
+                const box = new THREE.Box3().setFromObject(obj);
                 const size = new THREE.Vector3();
                 const center = new THREE.Vector3();
 
                 box.getSize(size);
                 box.getCenter(center);
 
-                // Center & ground
-                mesh.position.x = -center.x;
-                mesh.position.y = -box.min.y + 0.01;
-                mesh.position.z = -center.z;
+                // ---- CENTERING (matches Canvas3D) ----
+                obj.position.x -= center.x;
+                obj.position.z -= center.z;
 
-                // Auto-scale (matches Canvas3D intent)
+                // ---- GROUNDING ----
+                obj.position.y -= box.min.y;
+
+                // ---- AUTO SCALE ----
                 const maxDim = Math.max(size.x, size.y, size.z);
-                const TARGET_SIZE = 3; // meters
-                const scale = TARGET_SIZE / maxDim;
+                const TARGET_SIZE = 3; // meters (human-scale VR)
+                const scaleFactor = TARGET_SIZE / maxDim;
 
-                this.el.setAttribute(
-                  "scale",
-                  `${scale} ${scale} ${scale}`
+                obj.scale.set(
+                  scaleFactor,
+                  scaleFactor,
+                  scaleFactor
                 );
 
-                console.log("✅ Auto-centered & auto-scaled model in VR");
+                obj.updateMatrixWorld(true);
+
+                console.log("✅ VR model centered, grounded & scaled correctly");
               });
             },
           });
@@ -87,7 +98,7 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
   const scaleMap: Record<string, string> = {
     pottedplant: "2 2 2",
     vase: "3 3 3",
-    wedding: "0.01 0.01 0.01", // overridden by auto-center for large models
+    wedding: "0.01 0.01 0.01", // overridden by auto-center for generated stages
     stage: "1 1 1",
   };
 
@@ -159,7 +170,7 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
           return (
             <a-entity
               key={i}
-              gltf-model={`#asset-${i}`}   // ✅ FIXED
+              gltf-model={`#asset-${i}`}
               position={pos}
               rotation={rot}
               scale={scale}
