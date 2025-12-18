@@ -90,12 +90,17 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
     <div className="w-full h-full bg-black">
       <a-scene embedded renderer="antialias: true; colorManagement: true;">
         
-        {/* ⭐ BRIGHTER LIGHTING */}
-        <a-entity light="type: ambient; intensity: 2" />
-        <a-entity light="type: directional; intensity: 2.2" position="8 12 8" />
-        <a-entity light="type: point; intensity: 1.5; distance: 50" position="0 5 0" />
+        {/* ⭐ BRIGHTER REALISTIC LIGHTING */}
+        <a-entity light="type: ambient; intensity: 2; color: #ffffff" />
+        <a-entity
+          light="type: directional; intensity: 3; color: #ffffff"
+          position="5 10 8"
+        />
+        <a-entity
+          light="type: hemisphere; intensity: 1.6; color: #ffffff; groundColor: #777777"
+        />
 
-        {/* ⭐ CAMERA FURTHER BACK + SLIGHTLY HIGHER */}
+        {/* ⭐ CAMERA FURTHER + SLIGHTLY HIGHER */}
         <a-camera position="0 2.2 28" far="20000" />
 
         {/* GROUND */}
@@ -111,10 +116,7 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
               id={`model-${o.name}-${i}`}
               gltf-model={`url(${url})`}
               crossorigin="anonymous"
-
-              /* ⭐ MODEL PUSHED FARTHER BACK */
               position={`${o.position[0]} 0 ${o.position[2] - 25}`}
-
               rotation={`${o.rotation[0]} ${o.rotation[1]} ${o.rotation[2]}`}
               auto-center
             />
