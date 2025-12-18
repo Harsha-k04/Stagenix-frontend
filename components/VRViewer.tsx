@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 
-// Dynamically import aframe only on the client side
 const AFrame = dynamic(() => import("aframe"), { ssr: false });
 
 interface StageObject {
@@ -19,64 +18,58 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
   useEffect(() => {
     import("aframe")
       .then(() => {
-        setReady(true);
-
         const AFRAME = (window as any).AFRAME;
 
         if (AFRAME && !AFRAME.components["auto-center"]) {
           AFRAME.registerComponent("auto-center", {
             init: function () {
               this.el.addEventListener("model-loaded", () => {
-                // ✅ FIX: use A-Frame's THREE instance
-                const THREE = (window as any).AFRAME.THREE;
-
+                const THREE = AFRAME.THREE;
                 const obj = this.el.object3D;
                 if (!obj) return;
 
+                // 1. Calculate the bounding box
                 obj.updateMatrixWorld(true);
-
                 const box = new THREE.Box3().setFromObject(obj);
                 const size = new THREE.Vector3();
-                const center = new THREE.Vector3();
-
                 box.getSize(size);
+                const center = new THREE.Vector3();
                 box.getCenter(center);
 
-                // Center horizontally
+                // --- DIAGNOSTIC LOGS ---
+                console.log(`📦 Model Loaded: ${this.el.id}`);
+                console.log(`📏 Original Size: Width:${size.x.toFixed(2)}, Height:${size.y.toFixed(2)}, Depth:${size.z.toFixed(2)}`);
+                console.log(`📍 Original Center: ${center.x.toFixed(2)}, ${center.y.toFixed(2)}, ${center.z.toFixed(2)}`);
+
+                // 2. Center the model's geometry
                 obj.position.x -= center.x;
                 obj.position.z -= center.z;
+                obj.position.y -= box.min.y; // Sit on the floor
 
-                // Ground vertically
-                obj.position.y -= box.min.y;
-
-                // Normalize scale for VR
+                // 3. AUTO-NORMALIZATION 
+                // This makes the model roughly 4 meters wide regardless of how big the file was
                 const maxDim = Math.max(size.x, size.y, size.z);
-                const scale = 3 / maxDim;
-                obj.scale.set(scale, scale, scale);
+                if (maxDim > 0) {
+                  const scaleFactor = 4 / maxDim; 
+                  obj.scale.set(scaleFactor, scaleFactor, scaleFactor);
+                  console.log(`⚖️ Auto-scaled by: ${scaleFactor.toFixed(5)} to fit VR view.`);
+                }
 
                 obj.updateMatrixWorld(true);
-
-                console.log("✅ model-loaded fired, VR normalization done");
               });
 
-              // Log model load failures
               this.el.addEventListener("model-error", (e: any) => {
-                console.error("❌ GLB failed to load:", e);
+                console.error("❌ GLB failed to load path:", this.el.getAttribute("gltf-model"), e);
               });
             },
           });
         }
+        setReady(true);
       })
       .catch(console.error);
   }, []);
 
-  if (!ready) {
-    return (
-      <div className="w-full h-full flex items-center justify-center bg-black text-white">
-        Loading VR Viewer…
-      </div>
-    );
-  }
+  if (!ready) return <div className="bg-black text-white p-10">Loading VR...</div>;
 
   const modelMap: Record<string, string> = {
     pottedplant: "/assets/pottedplant/scene.glb",
@@ -85,78 +78,55 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
     wedding: "/assets/wedding/wedding.glb",
   };
 
-  const scaleMap: Record<string, string> = {
-    pottedplant: "2 2 2",
-    vase: "3 3 3",
-    wedding: "0.01 0.01 0.01",
-    stage: "1 1 1",
-  };
-
-  const Z_OFFSET = -3;
-  const INITIAL_CAMERA_Z = 5;
-  const INITIAL_CAMERA_Y = 1.6;
+  // We are removing the manual scaleMap because the "auto-center" component 
+  // now handles normalization automatically.
+  
+  const Z_OFFSET = -5; // Move models further back from camera
 
   return (
     <div className="w-full h-full bg-black">
-      <a-scene
-        embedded
-        vr-mode-ui="enabled: true"
-        renderer="
-          antialias: true;
-          colorManagement: true;
-          physicallyCorrectLights: true;
-          shadowMapEnabled: true;
-        "
+      <a-scene 
+        embedded 
+        renderer="antialias: true; colorManagement: true;"
       >
-        {/* LIGHTING */}
-        <a-entity light="type: ambient; intensity: 0.8" />
-        <a-entity light="type: directional; intensity: 1.2" position="2 5 3" />
-        <a-entity light="type: hemisphere; intensity: 0.6" />
-
-        {/* ASSETS */}
         <a-assets>
-          {objects.map((o, i) => {
-            const url = o.glbUrl || modelMap[o.name];
-            return url ? (
-              <a-asset-item
-                key={i}
-                id={`asset-${i}`}
-                src={url}
-                crossorigin="anonymous"
-              />
-            ) : null;
-          })}
+          {objects.map((o, i) => (
+            <a-asset-item 
+                key={i} 
+                id={`asset-${i}`} 
+                src={o.glbUrl || modelMap[o.name]} 
+                crossorigin="anonymous" 
+            />
+          ))}
         </a-assets>
 
-        {/* CAMERA */}
-        <a-entity position={`0 ${INITIAL_CAMERA_Y} ${INITIAL_CAMERA_Z}`}>
-          <a-camera look-controls wasd-controls />
+        {/* LIGHTING */}
+        <a-entity light="type: ambient; intensity: 0.8" />
+        <a-entity light="type: directional; intensity: 1" position="1 4 3" />
+
+        {/* CAMERA: Higher up and further back */}
+        <a-entity position="0 1.6 5">
+          <a-camera look-controls wasd-controls far="10000" near="0.1" />
         </a-entity>
 
         {/* GROUND */}
-        <a-plane rotation="-90 0 0" width="500" height="500" color="#333" />
+        <a-plane rotation="-90 0 0" width="100" height="100" color="#222" />
 
         {/* MODELS */}
-        {objects.map((o, i) => {
-          const pos = `${o.position[0]} ${o.position[1]} ${o.position[2] + Z_OFFSET}`;
-          const rot = `${o.rotation[0]} ${o.rotation[1]} ${o.rotation[2]}`;
-          const scale = scaleMap[o.name] || "1 1 1";
+        {objects.map((o, i) => (
+          <a-entity
+            key={i}
+            id={`entity-${o.name}`}
+            gltf-model={`#asset-${i}`}
+            position={`${o.position[0]} 0 ${o.position[2] + Z_OFFSET}`}
+            rotation={`${o.rotation[0]} ${o.rotation[1]} ${o.rotation[2]}`}
+            auto-center // This component now handles scaling automatically
+          />
+        ))}
 
-          return (
-            <a-entity
-              key={i}
-              gltf-model={`#asset-${i}`}
-              position={pos}
-              rotation={rot}
-              scale={scale}
-              auto-center
-            />
-          );
-        })}
-
-        {/* DEBUG */}
-        <a-box position="0 1 -3" color="red" />
-        <a-sky color="#151515" />
+        {/* DEBUG BOX: If you see this, the center is here */}
+        <a-box position="0 0.5 -5" color="red" width="0.2" height="1" depth="0.2" />
+        <a-sky color="#111" />
       </a-scene>
     </div>
   );
