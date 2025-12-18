@@ -46,14 +46,12 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
                 )} Y:${size.y.toFixed(2)} Z:${size.z.toFixed(2)}`
               );
 
-              // --- CENTER ON ORIGIN & GROUND ---
               obj.position.x -= center.x;
               obj.position.z -= center.z;
               obj.position.y -= box.min.y;
 
               obj.updateMatrixWorld(true);
 
-              // --- AUTO SCALE (Make visible in VR) ---
               const maxDim = Math.max(size.x, size.y, size.z);
               const TARGET_SIZE = 4;
               const scale = TARGET_SIZE / maxDim;
@@ -91,17 +89,17 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
   return (
     <div className="w-full h-full bg-black">
       <a-scene embedded renderer="antialias: true; colorManagement: true;">
-        {/* LIGHTING (ONLY CHANGED) */}
-        <a-entity light="type: ambient; intensity: 1.5" />
-        <a-entity light="type: directional; intensity: 2" position="5 10 5" />
+        
+        {/* ⭐ ONLY LIGHT CHANGES */}
+        <a-entity light="type: ambient; intensity: 2" />
+        <a-entity light="type: directional; intensity: 2.2" position="8 12 8" />
+        <a-entity light="type: point; intensity: 1.5; distance: 50" position="0 5 0" />
 
-        {/* CAMERA (ONLY CHANGED) */}
-        <a-camera position="0 2 18" far="10000" />
+        {/* ⭐ ONLY CAMERA CHANGE */}
+        <a-camera position="0 2.2 28" far="20000" />
 
-        {/* GROUND */}
-        <a-plane rotation="-90 0 0" width="100" height="100" color="#222" />
+        <a-plane rotation="-90 0 0" width="200" height="200" color="#222" />
 
-        {/* MODELS */}
         {objects.map((o, i) => {
           const url = o.glbUrl || modelMap[o.name];
 
@@ -111,15 +109,16 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
               id={`model-${o.name}-${i}`}
               gltf-model={`url(${url})`}
               crossorigin="anonymous"
-              /* ONLY THIS PUSH DISTANCE CHANGED */
-              position={`${o.position[0]} 0 ${o.position[2] - 15}`}
+
+              {/* ⭐ ONLY PUSHING MODEL BACK MORE */}
+              position={`${o.position[0]} 0 ${o.position[2] - 25}`}
+
               rotation={`${o.rotation[0]} ${o.rotation[1]} ${o.rotation[2]}`}
               auto-center
             />
           );
         })}
 
-        {/* DEBUG OBJECT */}
         <a-box
           position="0 0.5 -5"
           color="red"
