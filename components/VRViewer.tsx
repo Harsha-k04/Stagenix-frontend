@@ -90,16 +90,18 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
     <div className="w-full h-full bg-black">
       <a-scene embedded renderer="antialias: true; colorManagement: true;">
         
-        {/* ⭐ ONLY LIGHT CHANGES */}
+        {/* ⭐ BRIGHTER LIGHTING */}
         <a-entity light="type: ambient; intensity: 2" />
         <a-entity light="type: directional; intensity: 2.2" position="8 12 8" />
         <a-entity light="type: point; intensity: 1.5; distance: 50" position="0 5 0" />
 
-        {/* ⭐ ONLY CAMERA CHANGE */}
+        {/* ⭐ CAMERA FURTHER BACK + SLIGHTLY HIGHER */}
         <a-camera position="0 2.2 28" far="20000" />
 
+        {/* GROUND */}
         <a-plane rotation="-90 0 0" width="200" height="200" color="#222" />
 
+        {/* MODELS */}
         {objects.map((o, i) => {
           const url = o.glbUrl || modelMap[o.name];
 
@@ -110,7 +112,7 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
               gltf-model={`url(${url})`}
               crossorigin="anonymous"
 
-              {/* ⭐ ONLY PUSHING MODEL BACK MORE */}
+              /* ⭐ MODEL PUSHED FARTHER BACK */
               position={`${o.position[0]} 0 ${o.position[2] - 25}`}
 
               rotation={`${o.rotation[0]} ${o.rotation[1]} ${o.rotation[2]}`}
@@ -119,6 +121,7 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
           );
         })}
 
+        {/* DEBUG BOX */}
         <a-box
           position="0 0.5 -5"
           color="red"
