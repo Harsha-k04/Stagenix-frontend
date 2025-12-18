@@ -23,22 +23,44 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
         AFRAME.registerComponent("auto-center", {
           init: function () {
             console.log(`🛠️ Component attached to: ${this.el.id}`);
-            
+
             this.el.addEventListener("model-loaded", () => {
-              const obj = this.el.getObject3D('mesh');
               console.log(`✅ Model LOADED successfully for: ${this.el.id}`);
-              
-              if (obj) {
-                const box = new (AFRAME.THREE.Box3)().setFromObject(obj);
-                const size = new (AFRAME.THREE.Vector3)();
-                box.getSize(size);
-                console.log(`📏 Dimensions of ${this.el.id}: X:${size.x.toFixed(2)} Y:${size.y.toFixed(2)} Z:${size.z.toFixed(2)}`);
-                
-                // Auto-normalize to a visible size (4 meters)
-                const maxDim = Math.max(size.x, size.y, size.z);
-                const scale = 4 / maxDim;
-                this.el.setAttribute('scale', `${scale} ${scale} ${scale}`);
-              }
+
+              const THREE = (window as any).THREE;
+              const obj = this.el.getObject3D("mesh");
+              if (!obj || !THREE) return;
+
+              obj.updateMatrixWorld(true);
+
+              const box = new THREE.Box3().setFromObject(obj);
+              const size = new THREE.Vector3();
+              const center = new THREE.Vector3();
+
+              box.getSize(size);
+              box.getCenter(center);
+
+              console.log(
+                `📏 Dimensions of ${this.el.id}: X:${size.x.toFixed(
+                  2
+                )} Y:${size.y.toFixed(2)} Z:${size.z.toFixed(2)}`
+              );
+
+              // --- CENTER ON ORIGIN & GROUND ---
+              obj.position.x -= center.x;
+              obj.position.z -= center.z;
+              obj.position.y -= box.min.y;
+
+              obj.updateMatrixWorld(true);
+
+              // --- AUTO SCALE (Make visible in VR) ---
+              const maxDim = Math.max(size.x, size.y, size.z);
+              const TARGET_SIZE = 4;
+              const scale = TARGET_SIZE / maxDim;
+
+              this.el.setAttribute("scale", `${scale} ${scale} ${scale}`);
+
+              console.log("🎯 Normalized + Scaled for VR");
             });
 
             this.el.addEventListener("model-error", (e: any) => {
@@ -47,11 +69,17 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
           },
         });
       }
+
       setReady(true);
     });
   }, []);
 
-  if (!ready) return <div className="p-10 bg-black text-white">Initializing VR System...</div>;
+  if (!ready)
+    return (
+      <div className="p-10 bg-black text-white">
+        Initializing VR System...
+      </div>
+    );
 
   const modelMap: Record<string, string> = {
     pottedplant: "/assets/pottedplant/scene.glb",
@@ -62,26 +90,28 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
 
   return (
     <div className="w-full h-full bg-black">
-      {/* We use a simple renderer to avoid the sigmaRadians shadow error */}
       <a-scene embedded renderer="antialias: true; colorManagement: true;">
-        
-        {/* 🔥 BRIGHTER LIGHTING */}
+        {/* LIGHTING (ONLY CHANGED) */}
         <a-entity light="type: ambient; intensity: 1.5" />
         <a-entity light="type: directional; intensity: 2" position="5 10 5" />
 
-        {/* 🎯 MOVE CAMERA BACK + SLIGHTLY HIGHER */}
+        {/* CAMERA (ONLY CHANGED) */}
         <a-camera position="0 2 18" far="10000" />
 
+        {/* GROUND */}
         <a-plane rotation="-90 0 0" width="100" height="100" color="#222" />
 
+        {/* MODELS */}
         {objects.map((o, i) => {
           const url = o.glbUrl || modelMap[o.name];
+
           return (
             <a-entity
               key={i}
               id={`model-${o.name}-${i}`}
-              gltf-model={url} 
-              {/* 🎯 PUSH MODEL FORWARD SO USER STANDS IN FRONT */}
+              gltf-model={`url(${url})`}
+              crossorigin="anonymous"
+              /* ONLY THIS PUSH DISTANCE CHANGED */
               position={`${o.position[0]} 0 ${o.position[2] - 15}`}
               rotation={`${o.rotation[0]} ${o.rotation[1]} ${o.rotation[2]}`}
               auto-center
@@ -89,8 +119,15 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
           );
         })}
 
-        {/* Debug box (unchanged) */}
-        <a-box position="0 0.5 -5" color="red" width="0.5" height="0.5" depth="0.5" />
+        {/* DEBUG OBJECT */}
+        <a-box
+          position="0 0.5 -5"
+          color="red"
+          width="0.5"
+          height="0.5"
+          depth="0.5"
+        />
+
         <a-sky color="#111" />
       </a-scene>
     </div>
