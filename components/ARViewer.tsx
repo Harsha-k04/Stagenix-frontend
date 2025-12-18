@@ -99,7 +99,7 @@ AFRAME.registerComponent("auto-center-scale", {
       obj.position.y -= box.min.y;
 
       const maxDim = Math.max(size.x,size.y,size.z);
-      const target = 1.2; // ~1 meter real world
+      const target = 1.2;
       const s = target / maxDim;
       obj.scale.set(s,s,s);
       console.log("AR model normalized");
@@ -170,7 +170,7 @@ setTimeout(()=>{
       allow="camera; microphone; xr-spatial-tracking;"
       allowFullScreen
       referrerPolicy="no-referrer"
-      sandbox="allow-scripts allow-same-origin allow-pointer-lock"
+      sandbox="allow-scripts allow-same-origin allow-pointer-lock allow-forms"
     />
   );
 }
