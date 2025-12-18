@@ -22,11 +22,7 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
       if (AFRAME && !AFRAME.components["auto-center"]) {
         AFRAME.registerComponent("auto-center", {
           init: function () {
-            console.log(`🛠️ Component attached to: ${this.el.id}`);
-
             this.el.addEventListener("model-loaded", () => {
-              console.log(`✅ Model LOADED successfully for: ${this.el.id}`);
-
               const THREE = (window as any).THREE;
               const obj = this.el.getObject3D("mesh");
               if (!obj || !THREE) return;
@@ -40,12 +36,6 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
               box.getSize(size);
               box.getCenter(center);
 
-              console.log(
-                `📏 Dimensions of ${this.el.id}: X:${size.x.toFixed(
-                  2
-                )} Y:${size.y.toFixed(2)} Z:${size.z.toFixed(2)}`
-              );
-
               obj.position.x -= center.x;
               obj.position.z -= center.z;
               obj.position.y -= box.min.y;
@@ -57,12 +47,6 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
               const scale = TARGET_SIZE / maxDim;
 
               this.el.setAttribute("scale", `${scale} ${scale} ${scale}`);
-
-              console.log("🎯 Normalized + Scaled for VR");
-            });
-
-            this.el.addEventListener("model-error", (e: any) => {
-              console.error(`❌ Model ERROR for ${this.el.id}:`, e.detail.src);
             });
           },
         });
@@ -88,20 +72,29 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
 
   return (
     <div className="w-full h-full bg-black">
-      <a-scene embedded renderer="antialias: true; colorManagement: true;">
-        
-        {/* ⭐ BRIGHT BUT NATURAL LIGHTING */}
-        <a-entity light="type: ambient; intensity: 2.2" />
-        <a-entity light="type: directional; intensity: 2.5" position="5 10 6" />
-        <a-entity light="type: point; intensity: 2; distance: 80" position="0 6 10" />
+      <a-scene
+        embedded
+        renderer="
+          antialias: true;
+          physicallyCorrectLights: true;
+          colorManagement: true;
+          toneMapping: ACESFilmicToneMapping;
+          exposure: 2.5;
+        "
+      >
 
-        {/* ⭐ CAMERA CLOSER + LITTLE HIGHER */}
-        <a-camera position="0 2 18" far="20000" />
+        {/* 🌞 EXTREME BRIGHT MODE */}
+        <a-entity light="type: ambient; intensity: 3" />
+        <a-entity light="type: hemisphere; intensity: 2.5; color: #ffffff; groundColor: #888888" />
+        <a-entity light="type: directional; intensity: 4" position="6 12 10" castShadow="true" />
+        <a-entity light="type: point; intensity: 3; distance: 120" position="0 6 10" />
 
-        {/* GROUND */}
-        <a-plane rotation="-90 0 0" width="200" height="200" color="#222" />
+        {/* CAMERA */}
+        <a-camera position="0 1.8 16" far="20000" />
 
-        {/* MODELS */}
+        {/* FLOOR */}
+        <a-plane rotation="-90 0 0" width="400" height="400" color="#2a2a2a" />
+
         {objects.map((o, i) => {
           const url = o.glbUrl || modelMap[o.name];
 
@@ -111,21 +104,14 @@ export default function VRViewer({ objects }: { objects: StageObject[] }) {
               id={`model-${o.name}-${i}`}
               gltf-model={`url(${url})`}
               crossorigin="anonymous"
-              position={`${o.position[0]} 0 ${o.position[2] - 18}`}
+              position={`${o.position[0]} 0 ${o.position[2] - 16}`}
               rotation={`${o.rotation[0]} ${o.rotation[1]} ${o.rotation[2]}`}
               auto-center
             />
           );
         })}
 
-        {/* DEBUG BOX */}
-        <a-box
-          position="0 0.5 -5"
-          color="red"
-          width="0.5"
-          height="0.5"
-          depth="0.5"
-        />
+        <a-box position="0 0.5 -5" color="red" width="0.5" height="0.5" depth="0.5" />
 
         <a-sky color="#111" />
       </a-scene>
