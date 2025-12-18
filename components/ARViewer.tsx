@@ -18,20 +18,32 @@ export default function ARViewer({ objects }: { objects: StageObject[] }) {
       iframeRef.current.contentWindow?.document;
     if (!doc) return;
 
-    // Model map (scales matched to Canvas3D)
-    const modelMap: Record<string, { src: string; scale: string; position: string }> = {
-      pottedplant: { src: "/assets/pottedplant/scene.glb", scale: "1 1 1", position: "0 0 0" },
-      vase: { src: "/assets/vase/scene.glb", scale: "1 1 1", position: "0 0 0" },
+    const modelMap: Record<
+      string,
+      { src: string; scale: string; position: string }
+    > = {
+      pottedplant: {
+        src: "/assets/pottedplant/scene.glb",
+        scale: "1 1 1",
+        position: "0 0 0",
+      },
+      vase: {
+        src: "/assets/vase/scene.glb",
+        scale: "1 1 1",
+        position: "0 0 0",
+      },
       wedding: {
         src: "https://stagenix-backend.onrender.com/model/perfect_stage_corrected.glb",
         scale: "1 1 1",
         position: "0 0 0",
       },
-      stage: { src: "/assets/stage/stage.glb", scale: "1 1 1", position: "0 0 0" },
+      stage: {
+        src: "/assets/stage/stage.glb",
+        scale: "1 1 1",
+        position: "0 0 0",
+      },
     };
 
-
-    // Build A-Frame entities
     const entityStrings = (objects || [])
       .filter((o) => modelMap[o.name])
       .map((o, i) => {
@@ -40,13 +52,13 @@ export default function ARViewer({ objects }: { objects: StageObject[] }) {
         const rot = `${o.rotation[0]} ${o.rotation[1]} ${o.rotation[2]}`;
 
         return `<a-entity 
-                  id="obj-${i}"
-                  gltf-model="url(${map.src})"
-                  position="${pos}"
-                  rotation="${rot}"
-                  scale="${map.scale}"
-                  gesture-detector
-                ></a-entity>`;
+            id="obj-${i}"
+            gltf-model="#asset-${i}"
+            crossorigin="anonymous"
+            position="${pos}"
+            rotation="${rot}"
+            auto-center-scale
+        ></a-entity>`;
       })
       .join("\n");
 
@@ -54,116 +66,95 @@ export default function ARViewer({ objects }: { objects: StageObject[] }) {
       <a-text value="No compatible models found" color="#fff" align="center"></a-text>
     </a-entity>`;
 
-    // Build the full AR iframe document (transparent background + alpha renderer)
     doc.open();
     doc.write(`<!doctype html>
-<html lang="en">
+<html>
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Stagenix AR</title>
 
-<!-- A-Frame + AR.js -->
-<script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+<script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.3.2/aframe/build/aframe-ar.min.js"></script>
 
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:#000;}
+#hint{position:absolute;left:10px;top:10px;z-index:9999;
+background:rgba(0,0,0,0.65);color:#fff;padding:8px 10px;border-radius:8px;}
+</style>
+
 <script>
-  function showHint(msg) {
-    const el = document.getElementById('hint');
-    if (el) el.innerText = msg;
+AFRAME.registerComponent("auto-center-scale", {
+  init: function(){
+    this.el.addEventListener("model-loaded", () => {
+      const obj = this.el.getObject3D("mesh");
+      if(!obj) return;
+      const box = new THREE.Box3().setFromObject(obj);
+      const size = new THREE.Vector3();
+      const center = new THREE.Vector3();
+      box.getSize(size);
+      box.getCenter(center);
+
+      obj.position.sub(center);
+      obj.position.y -= box.min.y;
+
+      const maxDim = Math.max(size.x,size.y,size.z);
+      const target = 1.2; // ~1 meter real world
+      const s = target / maxDim;
+      obj.scale.set(s,s,s);
+      console.log("AR model normalized");
+    });
   }
+});
 </script>
 
-<style>
-  html, body {
-    margin:0;
-    padding:0;
-    width:100%;
-    height:100%;
-    background:transparent; /* transparent so parent won't show */
-    overflow:hidden;
-  }
-  a-scene {
-    width:100vw;
-    height:100vh;
-    background: transparent !important; /* ensure scene itself is transparent */
-  }
-  #hint {
-    position: absolute;
-    z-index: 9999;
-    left: 10px;
-    top: 10px;
-    background: rgba(0,0,0,0.6);
-    color: #fff;
-    padding: 8px 10px;
-    border-radius: 8px;
-    font-size: 13px;
-    font-family: system-ui, sans-serif;
-  }
-  #hiroWrap { 
-    position: absolute;
-    right: 12px;
-    bottom: 12px;
-    z-index:9999;
-    background: rgba(255,255,255,0.9);
-    padding:6px;
-    border-radius:6px;
-  }
-  #hiroWrap img { width: 86px; height:86px; display:block; }
-</style>
 </head>
+
 <body>
 
 <div id="hint">Point camera at the Hiro marker</div>
 
-
-
-<!-- NOTE: renderer includes alpha:true so camera/video can show behind WebGL -->
 <a-scene
   embedded
-  vr-mode-ui="enabled: false"
-  renderer="antialias: true; exposure: 2.2;"
-  arjs="trackingMethod: best; sourceType: webcam; sourceWidth:1280; sourceHeight:720; debugUIEnabled:false;"
+  vr-mode-ui="enabled:false"
+  renderer="logarithmicDepthBuffer:true; antialias:true;"
+  arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled:false;"
 >
-  <a-assets>
-    ${(objects || [])
-      .filter(o => modelMap[o.name]) // only used models
-      .map(o => {
-        const m = modelMap[o.name];
-        return `<a-asset-item id="${m.src}" src="${m.src}"></a-asset-item>`;
-      })
-      .join("\n")}
-  </a-assets>
-  <a-entity light="type: hemisphere; intensity: 2; color: #ffffff; groundColor: #666666"></a-entity>
-  <a-entity light="type: directional; intensity: 3; castShadow: true" position="2 4 1"></a-entity>
 
+<a-assets>
+${(objects || [])
+  .filter((o) => modelMap[o.name])
+  .map((o, i) => {
+    const m = modelMap[o.name];
+    return `<a-asset-item id="asset-${i}" src="${m.src}" crossorigin="anonymous"></a-asset-item>`;
+  })
+  .join("\n")}
+</a-assets>
 
-  <a-marker preset="hiro" emitevents="true" id="hiroMarker">
-    <a-entity id="markerObjects">
-      ${entityStrings || fallbackHTML}
-    </a-entity>
-  </a-marker>
+<a-marker preset="hiro" id="hiroMarker">
+  <a-entity>
+    ${entityStrings || fallbackHTML}
+  </a-entity>
+</a-marker>
 
-  <a-entity camera></a-entity>
+<a-entity camera></a-entity>
+
+<a-entity light="type: hemisphere; intensity: 2.2"></a-entity>
+<a-entity light="type: directional; intensity: 3; position: 2 4 1"></a-entity>
+
 </a-scene>
 
 <script>
-  // quick probe for camera permission, will stop the probe stream immediately
-  navigator.mediaDevices?.getUserMedia({ video: true })
-    .then(s => { s.getTracks().forEach(t=>t.stop()); showHint('Point camera at the Hiro marker'); })
-    .catch(e => { showHint('Camera blocked. Enable camera & reload.'); });
+navigator.mediaDevices?.getUserMedia({video:true})
+.then(s=>{s.getTracks().forEach(t=>t.stop());})
+.catch(()=>{document.getElementById("hint").innerText="Camera blocked";});
 
-  setTimeout(() => {
-    const marker = document.getElementById('hiroMarker');
-    if (marker) {
-      marker.addEventListener('markerFound', () =>
-        document.getElementById('hint').innerText = 'Marker detected'
-      );
-      marker.addEventListener('markerLost', () =>
-        document.getElementById('hint').innerText = 'Marker lost'
-      );
-    }
-  }, 1500);
+setTimeout(()=>{
+ const marker=document.getElementById("hiroMarker");
+ if(!marker) return;
+ marker.addEventListener("markerFound",()=>document.getElementById("hint").innerText="Marker detected");
+ marker.addEventListener("markerLost",()=>document.getElementById("hint").innerText="Point camera at the Hiro marker");
+},1200);
 </script>
 
 </body>
@@ -176,10 +167,10 @@ export default function ARViewer({ objects }: { objects: StageObject[] }) {
       ref={iframeRef}
       title="AR Viewer"
       className="w-full h-full border-none rounded-lg"
-      allow="camera; microphone; accelerometer; gyroscope; encrypted-media; xr-spatial-tracking; autoplay"
+      allow="camera; microphone; xr-spatial-tracking;"
       allowFullScreen
       referrerPolicy="no-referrer"
-      sandbox="allow-scripts allow-same-origin allow-forms allow-pointer-lock allow-modals"
+      sandbox="allow-scripts allow-same-origin allow-pointer-lock"
     />
   );
 }
