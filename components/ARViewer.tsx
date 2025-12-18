@@ -47,7 +47,6 @@ export default function ARViewer({ objects }: { objects: StageObject[] }) {
     const entityStrings = (objects || [])
       .filter((o) => modelMap[o.name])
       .map((o, i) => {
-        const map = modelMap[o.name];
         const pos = `${o.position[0]} ${o.position[1]} ${o.position[2]}`;
         const rot = `${o.rotation[0]} ${o.rotation[1]} ${o.rotation[2]}`;
 
@@ -74,7 +73,8 @@ export default function ARViewer({ objects }: { objects: StageObject[] }) {
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Stagenix AR</title>
 
-<script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+<!-- ✅ FIXED COMPATIBLE VERSIONS -->
+<script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.3.2/aframe/build/aframe-ar.min.js"></script>
 
 <style>
@@ -117,7 +117,7 @@ AFRAME.registerComponent("auto-center-scale", {
 <a-scene
   embedded
   vr-mode-ui="enabled:false"
-  renderer="logarithmicDepthBuffer:true; antialias:true;"
+  renderer="antialias:true;"
   arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled:false;"
 >
 
@@ -140,20 +140,16 @@ ${(objects || [])
 <a-entity camera></a-entity>
 
 <a-entity light="type: hemisphere; intensity: 2.2"></a-entity>
-<a-entity light="type: directional; intensity: 3; position: 2 4 1"></a-entity>
+<a-entity light="type: directional; intensity: 3" position="2 4 1"></a-entity>
 
 </a-scene>
 
 <script>
-navigator.mediaDevices?.getUserMedia({video:true})
-.then(s=>{s.getTracks().forEach(t=>t.stop());})
-.catch(()=>{document.getElementById("hint").innerText="Camera blocked";});
-
 setTimeout(()=>{
  const marker=document.getElementById("hiroMarker");
  if(!marker) return;
  marker.addEventListener("markerFound",()=>document.getElementById("hint").innerText="Marker detected");
- marker.addEventListener("markerLost",()=>document.getElementById("hint").innerText="Point camera at the Hiro marker");
+ marker.addEventListener("markerLost",()=>document.getElementById("hint").innerText="Point camera at Hiro marker");
 },1200);
 </script>
 
