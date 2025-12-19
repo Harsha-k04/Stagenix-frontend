@@ -87,7 +87,6 @@ html,body{
  overflow:hidden;
  background:transparent!important;
 }
-
 video,#arjs-video,.a-video{
  position:fixed!important;
  top:0!important;
@@ -97,14 +96,11 @@ video,#arjs-video,.a-video{
  object-fit:cover!important;
  z-index:1!important;
 }
-
 a-scene{
  z-index:2!important;
  background:transparent!important;
 }
-
 canvas{background:transparent!important;}
-
 #hint{
  position:absolute;
  left:10px;
@@ -118,7 +114,7 @@ canvas{background:transparent!important;}
 </style>
 
 <script>
-// ⭐ Auto normalize + BIGGER scale for AR
+// ⭐ Stable auto normalize for AR
 AFRAME.registerComponent("auto-center-scale", {
   init: function(){
     this.el.addEventListener("model-loaded", () => {
@@ -133,33 +129,39 @@ AFRAME.registerComponent("auto-center-scale", {
       box.getSize(size);
       box.getCenter(center);
 
-      obj.position.sub(center);      // center XZ
-      obj.position.y -= box.min.y;   // ground align
+      obj.position.sub(center);
+      obj.position.y -= box.min.y;
 
       const maxDim = Math.max(size.x,size.y,size.z);
-
-      // 🔥 Make model clearly visible size in AR (about ~2.5 meters)
-      const target = 2.5;
+      const target = 0.6;
       const s = target / maxDim;
       obj.scale.set(s,s,s);
 
-      console.log("AR MODEL NORMALIZED", size);
+      // ⭐ Force upright orientation always correct
+      obj.rotation.set(0, Math.PI, 0);
+
+      console.log("AR model normalized + fixed");
     });
   }
 });
 </script>
 
 </head>
-
 <body>
 
 <div id="hint">Point camera at the Hiro marker</div>
 
 <a-scene
-  embedded
-  vr-mode-ui="enabled:false"
-  renderer="alpha:true; antialias:true; physicallyCorrectLights:true; exposure:3; toneMapping:ACESFilmic;"
-  arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled:false;"
+ embedded
+ vr-mode-ui="enabled:false"
+ renderer="
+    alpha:true;
+    antialias:true;
+    physicallyCorrectLights:true;
+    exposure:3.0;
+    toneMapping:ACESFilmic;
+ "
+ arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled:false;"
 >
 
 <a-assets timeout="30000">
@@ -172,20 +174,18 @@ ${(objects || [])
   .join("\n")}
 </a-assets>
 
-<!-- ⭐ Rotate world so model stands UP -->
 <a-marker preset="hiro" id="hiroMarker">
-  <a-entity rotation="-90 0 0" position="0 0 0">
+  <a-entity>
     ${entityStrings || fallbackHTML}
   </a-entity>
 </a-marker>
 
 <a-entity camera></a-entity>
 
-<!-- ⭐ SUPER BRIGHT LIGHT -->
+<!-- ⭐ MAX SAFE BRIGHT LIGHT -->
 <a-entity light="type: ambient; intensity: 3"></a-entity>
-<a-entity light="type: hemisphere; intensity: 3; color:#ffffff; groundColor:#aaaaaa"></a-entity>
-<a-entity light="type: directional; intensity: 6; castShadow:true" position="2 6 2"></a-entity>
-<a-entity light="type: point; intensity: 4; distance: 120" position="0 4 4"></a-entity>
+<a-entity light="type: hemisphere; intensity: 3.2; color:#ffffff; groundColor:#bbbbbb"></a-entity>
+<a-entity light="type: directional; intensity: 5" position="4 8 4"></a-entity>
 
 </a-scene>
 
@@ -193,7 +193,6 @@ ${(objects || [])
 setTimeout(()=>{
  const marker=document.getElementById("hiroMarker");
  if(!marker) return;
-
  marker.addEventListener("markerFound",()=>document.getElementById("hint").innerText="Marker detected");
  marker.addEventListener("markerLost",()=>document.getElementById("hint").innerText="Point camera at the Hiro marker");
 },1200);
@@ -201,6 +200,7 @@ setTimeout(()=>{
 
 </body>
 </html>`);
+
     doc.close();
   }, [objects]);
 
