@@ -23,10 +23,26 @@ export default function ARViewer({ objects }: { objects: StageObject[] }) {
       string,
       { src: string; scale: string; position: string }
     > = {
-      pottedplant: { src: "/assets/pottedplant/scene.glb", scale: "1 1 1", position: "0 0 0" },
-      vase: { src: "/assets/vase/scene.glb", scale: "1 1 1", position: "0 0 0" },
-      wedding: { src: "https://stagenix-backend.onrender.com/model/perfect_stage_corrected.glb", scale: "1 1 1", position: "0 0 0" },
-      stage: { src: "/assets/stage/stage.glb", scale: "1 1 1", position: "0 0 0" },
+      pottedplant: {
+        src: "/assets/pottedplant/scene.glb",
+        scale: "1 1 1",
+        position: "0 0 0",
+      },
+      vase: {
+        src: "/assets/vase/scene.glb",
+        scale: "1 1 1",
+        position: "0 0 0",
+      },
+      wedding: {
+        src: "https://stagenix-backend.onrender.com/model/perfect_stage_corrected.glb",
+        scale: "1 1 1",
+        position: "0 0 0",
+      },
+      stage: {
+        src: "/assets/stage/stage.glb",
+        scale: "1 1 1",
+        position: "0 0 0",
+      },
     };
 
     const entityStrings = (objects || [])
@@ -113,11 +129,11 @@ AFRAME.registerComponent("auto-center-scale", {
       box.getSize(size);
       box.getCenter(center);
 
-      obj.position.sub(center);       // center X Z
-      obj.position.y -= box.min.y;    // ground align
+      obj.position.sub(center);
+      obj.position.y -= box.min.y;
 
       const maxDim = Math.max(size.x,size.y,size.z);
-      const target = 0.35;            // ~35cm real world
+      const target = 0.35;
       const s = target / maxDim;
       obj.scale.set(s,s,s);
 
@@ -135,7 +151,14 @@ AFRAME.registerComponent("auto-center-scale", {
 <a-scene
  embedded
  vr-mode-ui="enabled:false"
- renderer="alpha:true; antialias:true; physicallyCorrectLights:true; exposure:2.5; toneMapping:ACESFilmic;"
+ renderer="
+  alpha:true;
+  antialias:true;
+  physicallyCorrectLights:true;
+  colorManagement:true;
+  exposure:3;
+  toneMapping:ACESFilmic;
+"
  arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled:false;"
 >
 
@@ -150,7 +173,12 @@ ${(objects || [])
 </a-assets>
 
 <a-marker preset="hiro" id="hiroMarker">
-  ${entityStrings || fallbackHTML}
+
+  <!-- ⭐ FIX: Correct orientation + keep stable -->
+  <a-entity rotation="-90 0 0" position="0 0 0">
+      ${entityStrings || fallbackHTML}
+  </a-entity>
+
 </a-marker>
 
 <a-entity camera></a-entity>
@@ -197,4 +225,3 @@ setTimeout(()=>{
     />
   );
 }
-
