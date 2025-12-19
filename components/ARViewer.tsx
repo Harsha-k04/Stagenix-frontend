@@ -6,6 +6,7 @@ type StageObject = {
   name: string;
   position: [number, number, number];
   rotation: [number, number, number];
+  glbUrl?: string;
 };
 
 export default function ARViewer({ objects }: { objects: StageObject[] }) {
@@ -25,19 +26,21 @@ export default function ARViewer({ objects }: { objects: StageObject[] }) {
     > = {
       pottedplant: { src: "/assets/pottedplant/scene.glb", scale: "1 1 1", position: "0 0 0" },
       vase: { src: "/assets/vase/scene.glb", scale: "1 1 1", position: "0 0 0" },
+      stage: { src: "/assets/stage/stage.glb", scale: "1 1 1", position: "0 0 0" },
       wedding: {
-        src: "https://stagenix-backend.onrender.com/model/perfect_stage_corrected.glb",
+        // ⛔ previously wrong old model
+        // src: "https://stagenix-backend.onrender.com/model/perfect_stage_corrected.glb",
+        // ✅ use latest same as VR
+        src: "/assets/wedding/wedding.glb",
         scale: "1 1 1",
         position: "0 0 0",
       },
-      stage: { src: "/assets/stage/stage.glb", scale: "1 1 1", position: "0 0 0" },
     };
 
     const entityStrings = (objects || [])
       .filter((o) => modelMap[o.name])
       .map((o, i) => {
         const pos = `${o.position[0]} ${o.position[1]} ${o.position[2]}`;
-        const rot = `${o.rotation[0]} ${o.rotation[1]} ${o.rotation[2]}`;
 
         return `<a-entity 
           id="obj-${i}"
@@ -45,9 +48,8 @@ export default function ARViewer({ objects }: { objects: StageObject[] }) {
           crossorigin="anonymous"
 
           position="${pos}"
-          rotation="${rot}"
-
-          auto-center           <!-- ⭐ Same VR logic -->
+          rotation="90 0 0"         <!-- ⭐ FIX: make upright -->
+          auto-center
         ></a-entity>`;
       })
       .join("\n");
@@ -103,11 +105,9 @@ AFRAME.registerComponent("auto-center", {
       box.getSize(size);
       box.getCenter(center);
 
-      // ⭐ Same VR normalization
       obj.position.x -= center.x;
       obj.position.z -= center.z;
       obj.position.y -= box.min.y;
-
       obj.updateMatrixWorld(true);
 
       const maxDim = Math.max(size.x, size.y, size.z);
@@ -115,8 +115,6 @@ AFRAME.registerComponent("auto-center", {
       const scale = TARGET_SIZE / maxDim;
 
       this.el.setAttribute("scale", scale + " " + scale + " " + scale);
-
-      console.log("✔ AR model normalized same as VR");
     });
   }
 });
@@ -134,9 +132,8 @@ AFRAME.registerComponent("auto-center", {
    alpha:true;
    antialias:true;
    physicallyCorrectLights:true;
-   colorManagement:true;
    toneMapping:ACESFilmicToneMapping;
-   exposure:3.0;
+   exposure:2.8;
 "
  arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled:false;"
 >
@@ -156,23 +153,12 @@ ${(objects || [])
 
 <a-entity camera></a-entity>
 
-<!-- ⭐ EXACT VR LIGHTING -->
 <a-entity light="type: ambient; intensity: 3"></a-entity>
-<a-entity light="type: hemisphere; intensity: 2.5; color: #ffffff; groundColor: #888888"></a-entity>
+<a-entity light="type: hemisphere; intensity: 2.5" color="#fff" groundColor="#888"></a-entity>
 <a-entity light="type: directional; intensity: 4" position="6 12 10" castShadow="true"></a-entity>
-<a-entity light="type: point; intensity: 3; distance: 120" position="0 6 10"></a-entity>
+<a-entity light="type: point; intensity: 3; distance:120" position="0 6 10"></a-entity>
 
 </a-scene>
-
-<script>
-setTimeout(()=>{
- const marker=document.getElementById("hiroMarker");
- if(!marker) return;
-
- marker.addEventListener("markerFound",()=>{document.getElementById("hint").innerText="Marker detected";});
- marker.addEventListener("markerLost",()=>{document.getElementById("hint").innerText="Point camera at Hiro marker";});
-},1200);
-</script>
 
 </body>
 </html>`);
