@@ -85,7 +85,7 @@ html,body{
  background:transparent !important;
 }
 
-/* ✅ Force AR camera to show (TOP layer) */
+/* ✅ Force AR camera feed full screen */
 video,
 #arjs-video,
 .a-video {
@@ -98,7 +98,7 @@ video,
  z-index: 1 !important;
 }
 
-/* ✅ 3D scene above camera */
+/* ✅ 3D scene above */
 a-scene {
  z-index: 2 !important;
  background: transparent !important;
@@ -107,6 +107,7 @@ a-scene {
 canvas {
  background: transparent !important;
 }
+
 #hint{
  position:absolute;
  left:10px;
@@ -211,7 +212,7 @@ setTimeout(()=>{
     <iframe
       ref={iframeRef}
       title="AR Viewer"
-      className="w-full h-full border-none rounded-lg"
+      className="fixed top-0 left-0 w-screen h-screen border-none z-[9999]"
       allow="camera *; microphone *; xr-spatial-tracking *; fullscreen *"
       allowFullScreen
       referrerPolicy="no-referrer"
