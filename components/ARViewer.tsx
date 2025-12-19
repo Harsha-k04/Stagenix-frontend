@@ -170,7 +170,10 @@ ${(objects || [])
   .filter((o) => modelMap[o.name])
   .map(
     (o, i) =>
-      `<a-asset-item id="asset-${i}" src="${modelMap[o.name].src}" crossorigin="anonymous"></a-asset-item>`
+      `<a-asset-item id="asset-${i}" 
+       src="https://cdn.aframe.io/test-models/models/gltf/RobotExpressive/RobotExpressive.glb"
+       crossorigin="anonymous">
+      </a-asset-item>`
   )
   .join("\n")}
 </a-assets>
