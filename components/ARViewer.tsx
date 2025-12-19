@@ -34,10 +34,11 @@ export default function ARViewer({ objects }: { objects: StageObject[] }) {
         position: "0 0 0",
       },
       wedding: {
-        src: "https://stagenix-backend.onrender.com/model/perfect_stage_corrected.glb",
+        src: "https://cdn.aframe.io/test-models/models/gltf/RobotExpressive/RobotExpressive.glb",
         scale: "1 1 1",
         position: "0 0 0",
       },
+
       stage: {
         src: "/assets/stage/stage.glb",
         scale: "1 1 1",
