@@ -87,6 +87,7 @@ html,body{
  overflow:hidden;
  background:transparent!important;
 }
+
 video,#arjs-video,.a-video{
  position:fixed!important;
  top:0!important;
@@ -96,11 +97,14 @@ video,#arjs-video,.a-video{
  object-fit:cover!important;
  z-index:1!important;
 }
+
 a-scene{
  z-index:2!important;
  background:transparent!important;
 }
+
 canvas{background:transparent!important;}
+
 #hint{
  position:absolute;
  left:10px;
@@ -114,7 +118,7 @@ canvas{background:transparent!important;}
 </style>
 
 <script>
-// ⭐ SAFE auto scale for AR
+// ⭐ Auto normalize + BIGGER scale for AR
 AFRAME.registerComponent("auto-center-scale", {
   init: function(){
     this.el.addEventListener("model-loaded", () => {
@@ -129,40 +133,36 @@ AFRAME.registerComponent("auto-center-scale", {
       box.getSize(size);
       box.getCenter(center);
 
-      obj.position.sub(center);
-      obj.position.y -= box.min.y;
+      obj.position.sub(center);      // center XZ
+      obj.position.y -= box.min.y;   // ground align
 
       const maxDim = Math.max(size.x,size.y,size.z);
-      const target = 0.35;
+
+      // 🔥 Make model clearly visible size in AR (about ~2.5 meters)
+      const target = 2.5;
       const s = target / maxDim;
       obj.scale.set(s,s,s);
 
-      console.log("AR normalized OK");
+      console.log("AR MODEL NORMALIZED", size);
     });
   }
 });
 </script>
 
 </head>
+
 <body>
 
 <div id="hint">Point camera at the Hiro marker</div>
 
 <a-scene
- embedded
- vr-mode-ui="enabled:false"
- renderer="
-  alpha:true;
-  antialias:true;
-  physicallyCorrectLights:true;
-  colorManagement:true;
-  exposure:3;
-  toneMapping:ACESFilmic;
-"
- arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled:false;"
+  embedded
+  vr-mode-ui="enabled:false"
+  renderer="alpha:true; antialias:true; physicallyCorrectLights:true; exposure:3; toneMapping:ACESFilmic;"
+  arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled:false;"
 >
 
-<a-assets timeout="25000">
+<a-assets timeout="30000">
 ${(objects || [])
   .filter((o) => modelMap[o.name])
   .map(
@@ -172,21 +172,20 @@ ${(objects || [])
   .join("\n")}
 </a-assets>
 
+<!-- ⭐ Rotate world so model stands UP -->
 <a-marker preset="hiro" id="hiroMarker">
-
-  <!-- ⭐ FIX: Correct orientation + keep stable -->
   <a-entity rotation="-90 0 0" position="0 0 0">
-      ${entityStrings || fallbackHTML}
+    ${entityStrings || fallbackHTML}
   </a-entity>
-
 </a-marker>
 
 <a-entity camera></a-entity>
 
-<!-- ⭐ BRIGHT CLEAN LIGHT -->
-<a-entity light="type: ambient; intensity: 2.5"></a-entity>
+<!-- ⭐ SUPER BRIGHT LIGHT -->
+<a-entity light="type: ambient; intensity: 3"></a-entity>
 <a-entity light="type: hemisphere; intensity: 3; color:#ffffff; groundColor:#aaaaaa"></a-entity>
-<a-entity light="type: directional; intensity: 4; castShadow:true" position="2 6 2"></a-entity>
+<a-entity light="type: directional; intensity: 6; castShadow:true" position="2 6 2"></a-entity>
+<a-entity light="type: point; intensity: 4; distance: 120" position="0 4 4"></a-entity>
 
 </a-scene>
 
