@@ -56,7 +56,10 @@ export default function ARViewer({ objects }: { objects: StageObject[] }) {
             gltf-model="#asset-${i}"
             crossorigin="anonymous"
             position="${pos}"
-            rotation="${rot}"
+            
+            <!-- ⭐ FORCE MODEL TO SIT PROPERLY ON MARKER -->
+            rotation="-90 0 0"
+
             auto-center-scale
         ></a-entity>`;
       })
@@ -132,7 +135,8 @@ AFRAME.registerComponent("auto-center-scale", {
       obj.position.y -= box.min.y;
 
       const maxDim = Math.max(size.x,size.y,size.z);
-      const target = 1.2;
+
+      const target = 1.8;  // ⭐ slightly bigger + clearer
       const s = target / maxDim;
       obj.scale.set(s,s,s);
 
@@ -150,7 +154,9 @@ AFRAME.registerComponent("auto-center-scale", {
 <a-scene
  embedded
  vr-mode-ui="enabled:false"
- renderer="alpha:true; antialias:true; physicallyCorrectLights:true; colorManagement:true; exposure:1.7; toneMapping:ACESFilmic;"
+
+ renderer="alpha:true; antialias:true; physicallyCorrectLights:true; colorManagement:true; exposure:2.2; toneMapping:ACESFilmic;"
+
  arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled:false;"
 >
 
@@ -171,10 +177,10 @@ ${(objects || [])
 
 <a-entity camera></a-entity>
 
-<!-- ⭐ FIX: BRIGHT REALISTIC LIGHT -->
-<a-entity light="type: ambient; intensity: 1.8"></a-entity>
-<a-entity light="type: hemisphere; intensity: 2; color:#ffffff; groundColor:#888888"></a-entity>
-<a-entity light="type: directional; intensity: 4; castShadow:true" position="2 6 2"></a-entity>
+<!-- ⭐ MAX BRIGHTNESS LIKE VR -->
+<a-entity light="type: ambient; intensity: 2.2"></a-entity>
+<a-entity light="type: hemisphere; intensity: 2.5; color:#ffffff; groundColor:#999999"></a-entity>
+<a-entity light="type: directional" position="2 6 2" intensity="4.5" castShadow="true"></a-entity>
 
 </a-scene>
 
