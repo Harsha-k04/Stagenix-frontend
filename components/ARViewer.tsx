@@ -40,10 +40,9 @@ export default function ARViewer({ objects }: { objects: StageObject[] }) {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<title>Markerless WebXR</title>
+<title>Markerless AR</title>
 
 <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
 
 <style>
 html, body {
@@ -54,133 +53,113 @@ html, body {
 
 #hint {
   position: fixed;
-  top:12px;
-  left:12px;
-  z-index: 999;
+  top: 10px;
+  left: 10px;
   background: rgba(0,0,0,0.7);
-  color:white;
-  padding:8px 12px;
-  border-radius:10px;
-  font-size:14px;
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 10px;
+  z-index: 1000;
 }
 </style>
 
 <script>
 AFRAME.registerComponent("auto-center-scale", {
-  init: function(){
+  init() {
     this.el.addEventListener("model-loaded", () => {
       const THREE = window.THREE;
       const obj = this.el.getObject3D("mesh");
-      if(!obj) return;
+      if (!obj) return;
 
       obj.updateMatrixWorld(true);
       const box = new THREE.Box3().setFromObject(obj);
-      const size = new THREE.Vector3();
       const center = new THREE.Vector3();
-      box.getSize(size);
+      const size = new THREE.Vector3();
       box.getCenter(center);
+      box.getSize(size);
 
       obj.position.sub(center);
       obj.position.y -= box.min.y;
 
-      const max = Math.max(size.x,size.y,size.z);
-      const target = 4;   // ~4m real size
-      const s = target/max;
-      obj.scale.set(s,s,s);
+      const max = Math.max(size.x, size.y, size.z);
+      const s = 3 / max;
+      obj.scale.set(s, s, s);
     });
   }
 });
 </script>
-
 </head>
 
 <body>
 
-<div id="hint">Move phone to scan floor… tap to place</div>
+<div id="hint">Move phone to scan surface, tap to place</div>
 
 <a-scene
   xr-mode-ui="enabled: true"
-  webxr="optionalFeatures: hit-test;"
-  renderer="colorManagement: true; physicallyCorrectLights: true;"
-  vr-mode-ui="enabled: false"
+  webxr="optionalFeatures: hit-test; requiredFeatures: hit-test;"
+  renderer="physicallyCorrectLights: true; colorManagement: true"
   embedded
 >
 
-  <a-entity camera look-controls></a-entity>
-
-  <!-- Lighting -->
   <a-entity light="type: ambient; intensity: 2"></a-entity>
   <a-entity light="type: directional; intensity: 4" position="5 10 5"></a-entity>
 
-  <!-- Placement reticle -->
+  <a-camera></a-camera>
+
   <a-ring
     id="reticle"
-    color="yellow"
+    visible="false"
     radius-inner="0.08"
     radius-outer="0.1"
-    visible="false"
-    rotation="-90 0 0">
+    position="0 0 -1"
+    rotation="-90 0 0"
+    color="yellow">
   </a-ring>
 
-  <!-- Model Holder -->
-  <a-entity id="placedModel"></a-entity>
+  <a-entity id="modelHolder"></a-entity>
 
 </a-scene>
 
 <script>
-let xrHitRefSpace;
-let viewerSpace;
+let hitTestSource = null;
+let localSpace = null;
 let placed = false;
 
 const scene = document.querySelector("a-scene");
 const reticle = document.getElementById("reticle");
-const modelHolder = document.getElementById("placedModel");
+const modelHolder = document.getElementById("modelHolder");
 
 scene.renderer.xr.addEventListener("sessionstart", async () => {
   const session = scene.renderer.xr.getSession();
-  viewerSpace = await session.requestReferenceSpace("viewer");
-  xrHitRefSpace = await session.requestReferenceSpace("local");
 
-  session.requestAnimationFrame(onXRFrame);
+  const viewerSpace = await session.requestReferenceSpace("viewer");
+  hitTestSource = await session.requestHitTestSource({ space: viewerSpace });
+  localSpace = await session.requestReferenceSpace("local");
 
-  scene.addEventListener("click", () => {
-    if (reticle.visible && !placed) {
+  session.addEventListener("select", () => {
+    if (!placed && reticle.visible) {
       placed = true;
-      document.getElementById("hint").innerText = "Placed!";
       modelHolder.setAttribute("gltf-model", "${url}");
       modelHolder.setAttribute("auto-center-scale", "");
-      modelHolder.setAttribute("position",
-        reticle.object3D.position.x + " " +
-        reticle.object3D.position.y + " " +
-        reticle.object3D.position.z
-      );
+      modelHolder.object3D.position.copy(reticle.object3D.position);
+
+      document.getElementById("hint").innerText = "Placed!";
     }
   });
+
+  session.requestAnimationFrame(onXRFrame);
 });
 
-function onXRFrame(t, frame){
+function onXRFrame(t, frame) {
   const session = scene.renderer.xr.getSession();
   session.requestAnimationFrame(onXRFrame);
 
-  const results = frame.getHitTestResultsForTransientInput
-    ? []
-    : frame.getHitTestResults(frame.createHitTestSource
-       ? frame.createHitTestSource
-       : session.requestHitTestSource);
+  if (!hitTestSource || !localSpace) return;
 
-  const viewerPose = frame.getViewerPose(xrHitRefSpace);
-  if (!viewerPose) return;
+  const hits = frame.getHitTestResults(hitTestSource);
+  if (!hits.length) return;
 
-  const hitTestResults = frame.getHitTestResults(
-    frame.createHitTestSource
-      ? null
-      : session.requestHitTestSource({ space: viewerSpace })
-  );
-
-  if (!hitTestResults.length || placed) return;
-
-  const hit = hitTestResults[0];
-  const pose = hit.getPose(xrHitRefSpace);
+  const pose = hits[0].getPose(localSpace);
 
   reticle.object3D.position.set(
     pose.transform.position.x,
@@ -195,27 +174,27 @@ function onXRFrame(t, frame){
     pose.transform.orientation.w
   );
 
-  reticle.setAttribute("visible", true);
+  reticle.setAttribute("visible", !placed);
 }
 </script>
 
 </body>
-</html>`);
+</html>
+`);
     doc.close();
   }, [objects]);
 
   return (
     <iframe
       ref={iframeRef}
-      title="Markerless WebXR"
       style={{
         position: "fixed",
         top: 0,
         left: 0,
         width: "100vw",
         height: "100vh",
-        zIndex: 999999,
         border: "none",
+        zIndex: 99999
       }}
       allow="camera *; microphone *; xr-spatial-tracking *; fullscreen *"
       allowFullScreen
