@@ -28,9 +28,6 @@ export default function ARViewer({ objects }: { objects: StageObject[] }) {
       vase: { src: "/assets/vase/scene.glb", scale: "1 1 1", position: "0 0 0" },
       stage: { src: "/assets/stage/stage.glb", scale: "1 1 1", position: "0 0 0" },
       wedding: {
-        // ⛔ previously wrong old model
-        // src: "https://stagenix-backend.onrender.com/model/perfect_stage_corrected.glb",
-        // ✅ use latest same as VR
         src: "/assets/wedding/wedding.glb",
         scale: "1 1 1",
         position: "0 0 0",
@@ -46,17 +43,11 @@ export default function ARViewer({ objects }: { objects: StageObject[] }) {
           id="obj-${i}"
           gltf-model="#asset-${i}"
           crossorigin="anonymous"
-
           position="${pos}"
-          rotation="90 0 0"         <!-- ⭐ FIX: make upright -->
-          auto-center
+          auto-ar-fix
         ></a-entity>`;
       })
       .join("\n");
-
-    const fallbackHTML = `<a-entity position="0 0 -1">
-      <a-text value="No compatible models found" color="#fff" align="center"></a-text>
-    </a-entity>`;
 
     doc.open();
     doc.write(`<!doctype html>
@@ -71,30 +62,45 @@ export default function ARViewer({ objects }: { objects: StageObject[] }) {
 
 <style>
 html,body{
- margin:0;height:100%;overflow:hidden;background:transparent!important;
+ margin:0;
+ height:100%;
+ overflow:hidden;
+ background:transparent!important;
 }
 
+/* Fullscreen real camera */
 video,#arjs-video,.a-video{
- position:fixed!important;top:0!important;left:0!important;
- width:100%!important;height:100%!important;object-fit:cover!important;z-index:1!important;
+ position:fixed!important;
+ top:0!important;
+ left:0!important;
+ width:100%!important;
+ height:100%!important;
+ object-fit:cover!important;
+ z-index:1!important;
 }
 
 a-scene{z-index:2!important;background:transparent!important;}
 canvas{background:transparent!important;}
 
 #hint{
- position:absolute;left:10px;top:10px;z-index:9999;
- background:rgba(0,0,0,.65);color:#fff;padding:8px 10px;border-radius:8px;
+ position:absolute;
+ left:10px;
+ top:10px;
+ z-index:9999;
+ background:rgba(0,0,0,.65);
+ color:#fff;
+ padding:8px 10px;
+ border-radius:8px;
 }
 </style>
 
 <script>
-AFRAME.registerComponent("auto-center", {
-  init: function () {
+AFRAME.registerComponent("auto-ar-fix", {
+  init: function(){
     this.el.addEventListener("model-loaded", () => {
       const THREE = window.THREE;
       const obj = this.el.getObject3D("mesh");
-      if (!obj || !THREE) return;
+      if(!obj) return;
 
       obj.updateMatrixWorld(true);
 
@@ -105,16 +111,18 @@ AFRAME.registerComponent("auto-center", {
       box.getSize(size);
       box.getCenter(center);
 
-      obj.position.x -= center.x;
-      obj.position.z -= center.z;
+      obj.position.sub(center);
       obj.position.y -= box.min.y;
-      obj.updateMatrixWorld(true);
 
-      const maxDim = Math.max(size.x, size.y, size.z);
-      const TARGET_SIZE = 4;
-      const scale = TARGET_SIZE / maxDim;
+      const maxDim = Math.max(size.x,size.y,size.z);
+      const target = 4;
+      const s = target / maxDim;
+      obj.scale.set(s,s,s);
 
-      this.el.setAttribute("scale", scale + " " + scale + " " + scale);
+      // ⭐ FORCE STANDING STRAIGHT ALWAYS
+      obj.rotation.x = -Math.PI / 2;
+
+      console.log("AR model normalized + upright");
     });
   }
 });
@@ -132,8 +140,8 @@ AFRAME.registerComponent("auto-center", {
    alpha:true;
    antialias:true;
    physicallyCorrectLights:true;
-   toneMapping:ACESFilmicToneMapping;
-   exposure:2.8;
+   exposure:3;
+   shadowMapEnabled:false;
 "
  arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled:false;"
 >
@@ -147,16 +155,16 @@ ${(objects || [])
 
 <a-marker preset="hiro" id="hiroMarker">
   <a-entity>
-    ${entityStrings || fallbackHTML}
+    ${entityStrings || ""}
   </a-entity>
 </a-marker>
 
 <a-entity camera></a-entity>
 
-<a-entity light="type: ambient; intensity: 3"></a-entity>
-<a-entity light="type: hemisphere; intensity: 2.5" color="#fff" groundColor="#888"></a-entity>
-<a-entity light="type: directional; intensity: 4" position="6 12 10" castShadow="true"></a-entity>
-<a-entity light="type: point; intensity: 3; distance:120" position="0 6 10"></a-entity>
+<!-- SUPER BRIGHT MODE -->
+<a-entity light="type: ambient; intensity: 4"></a-entity>
+<a-entity light="type: hemisphere; intensity: 3; color:#ffffff; groundColor:#999"></a-entity>
+<a-entity light="type: directional; intensity: 6" position="4 8 4"></a-entity>
 
 </a-scene>
 
@@ -185,3 +193,4 @@ ${(objects || [])
     />
   );
 }
+
