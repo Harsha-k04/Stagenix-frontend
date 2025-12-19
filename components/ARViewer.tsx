@@ -79,16 +79,27 @@ export default function ARViewer({ objects }: { objects: StageObject[] }) {
 
 <style>
 html,body{
-  margin:0;
-  height:100%;
-  overflow:hidden;
-  background:#000;
+ margin:0;
+ height:100%;
+ overflow:hidden;
+ background:#000;
 }
 
-/* 🔥 Fix camera black / squished issue */
-html, body, a-scene, video {
-  width:100% !important;
-  height:100% !important;
+/* ✅ MOST IMPORTANT – force AR.js camera to show */
+video,
+#arjs-video,
+.a-video {
+ position: fixed !important;
+ top:0 !important;
+ left:0 !important;
+ width:100% !important;
+ height:100% !important;
+ object-fit: cover !important;
+ z-index: 1 !important;
+}
+
+a-scene {
+ z-index: 2 !important;
 }
 
 #hint{
@@ -124,7 +135,6 @@ AFRAME.registerComponent("auto-center-scale", {
       const target = 1.2;
       const s = target / maxDim;
       obj.scale.set(s,s,s);
-
       console.log("AR model normalized");
     });
   }
@@ -139,7 +149,7 @@ AFRAME.registerComponent("auto-center-scale", {
 <a-scene
  embedded
  vr-mode-ui="enabled:false"
- renderer="antialias:true;"
+ renderer="antialias:true; alpha:true;"
  arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled:false;"
 >
 
