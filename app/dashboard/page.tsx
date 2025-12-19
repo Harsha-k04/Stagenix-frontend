@@ -9,15 +9,94 @@ import BottomStatusBar from "@/components/bottom-status-bar";
 import ARViewer from "@/components/ARViewer";
 import VRViewer from "@/components/VRViewer";
 
+/* -------------------------------------------
+     ⭐ FULL SCREEN WEBXR AR COMPONENT
+------------------------------------------- */
+function FullScreenAR({ objects, onExit }: any) {
+  useEffect(() => {
+    const script = document.createElement("script");
+    script.src = "https://aframe.io/releases/1.4.0/aframe.min.js";
+    script.onload = () => console.log("A-Frame Loaded");
+    document.body.appendChild(script);
+  }, []);
+
+  const modelUrl =
+    objects?.[0]?.glbUrl ||
+    "https://stagenix-backend.onrender.com/model/perfect_stage_corrected.glb";
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        width: "100vw",
+        height: "100vh",
+        zIndex: 999999,
+        background: "#000",
+      }}
+    >
+      {/* EXIT BUTTON */}
+      <button
+        style={{
+          position: "absolute",
+          top: 14,
+          right: 14,
+          zIndex: 1000000,
+          padding: "10px 14px",
+          borderRadius: 10,
+          background: "#000000aa",
+          color: "white",
+          border: "1px solid #444",
+        }}
+        onClick={onExit}
+      >
+        Exit AR
+      </button>
+
+      <a-scene
+        embedded
+        webxr="mode: immersive-ar; optionalFeatures: hit-test;"
+        renderer="
+          antialias: true;
+          physicallyCorrectLights: true;
+          colorManagement: true;
+          toneMapping: ACESFilmicToneMapping;
+          exposure: 2.6;
+        "
+      >
+        <a-entity camera position="0 1.6 0"></a-entity>
+
+        {/* ⭐ SUPER BRIGHT LIGHT LIKE VR */}
+        <a-entity light="type: ambient; intensity: 3"></a-entity>
+        <a-entity light="type: hemisphere; intensity: 2.4; color:#ffffff; groundColor:#888888"></a-entity>
+        <a-entity light="type: directional; intensity: 4" position="6 12 10"></a-entity>
+        <a-entity light="type: point; intensity: 3; distance: 120" position="0 6 10"></a-entity>
+
+        {/* ⭐ MODEL IN FRONT */}
+        <a-entity
+          gltf-model={"url(" + modelUrl + ")"}
+          position="0 0 -2"
+          rotation="0 0 0"
+          scale="0.6 0.6 0.6"
+        ></a-entity>
+
+        <a-sky color="#000"></a-sky>
+      </a-scene>
+    </div>
+  );
+}
+
+/* -------------------------------------------
+              ORIGINAL DASHBOARD
+------------------------------------------- */
+
 export default function Dashboard() {
   const [viewMode, setViewMode] = useState<"perspective" | "ar" | "vr">("perspective");
   const [isGenerating, setIsGenerating] = useState(false);
   const [sceneObjects, setSceneObjects] = useState<any[]>([]);
 
-  // 👉 Added reference to access RightPanel sketch handler
   const rightPanelRef = useRef<any>(null);
 
-  // 👉 Added handler that forwards sketch file to RightPanel
   const handleSketchSelected = (file: File) => {
     console.log("Sketch received in Dashboard:", file);
     rightPanelRef.current?.handleSketchUpload(file);
@@ -38,7 +117,7 @@ export default function Dashboard() {
           <span>AR/VR Stage Studio</span>
         </div>
 
-        {/* Navbar menu */}
+        {/* Navbar */}
         <div className="hidden md:flex items-center gap-6 text-sm font-medium text-muted-foreground">
           <a href="#" className="hover:text-primary transition-colors">Home</a>
           <a href="#" className="hover:text-primary transition-colors">Create Stage</a>
@@ -48,26 +127,17 @@ export default function Dashboard() {
           <a href="#" className="hover:text-primary transition-colors">Profile</a>
         </div>
 
-        {/* Right: Mode Select Buttons */}
+        {/* Mode Buttons */}
         <div className="flex gap-2">
-          <button
-            onClick={() => setViewMode("perspective")}
-            className="px-3 py-2 bg-primary/20 border border-primary/40 text-primary rounded-lg hover:bg-primary/30"
-          >
+          <button onClick={() => setViewMode("perspective")} className="px-3 py-2 bg-primary/20 border border-primary/40 text-primary rounded-lg hover:bg-primary/30">
             3D
           </button>
 
-          <button
-            onClick={() => setViewMode("ar")}
-            className="px-3 py-2 bg-primary/20 border border-primary/40 text-primary rounded-lg hover:bg-primary/30"
-          >
+          <button onClick={() => setViewMode("ar")} className="px-3 py-2 bg-primary/20 border border-primary/40 text-primary rounded-lg hover:bg-primary/30">
             AR
           </button>
 
-          <button
-            onClick={() => setViewMode("vr")}
-            className="px-3 py-2 bg-primary/20 border border-primary/40 text-primary rounded-lg hover:bg-primary/30"
-          >
+          <button onClick={() => setViewMode("vr")} className="px-3 py-2 bg-primary/20 border border-primary/40 text-primary rounded-lg hover:bg-primary/30">
             VR
           </button>
         </div>
@@ -86,7 +156,7 @@ export default function Dashboard() {
           
           <div className="flex-1 relative min-h-[600px] p-2">
             {viewMode === "ar" ? (
-              <ARViewer objects={sceneObjects} />
+              <FullScreenAR objects={sceneObjects} onExit={() => setViewMode("perspective")} />
             ) : viewMode === "vr" ? (
               <VRViewer objects={sceneObjects} />
             ) : (
