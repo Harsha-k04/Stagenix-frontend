@@ -14,62 +14,60 @@ export default function ARViewer({ objects }: { objects: StageObject[] }) {
   useEffect(() => {
     if (!iframeRef.current) return;
 
-    const iframe = iframeRef.current;
+    const doc =
+      iframeRef.current.contentDocument ||
+      iframeRef.current.contentWindow?.document;
+    if (!doc) return;
 
-    iframe.onload = () => {
-      const doc =
-        iframe.contentDocument || iframe.contentWindow?.document;
-      if (!doc) return;
+    const modelMap: Record<
+      string,
+      { src: string; scale: string; position: string }
+    > = {
+      pottedplant: {
+        src: "/assets/pottedplant/scene.glb",
+        scale: "1 1 1",
+        position: "0 0 0",
+      },
+      vase: {
+        src: "/assets/vase/scene.glb",
+        scale: "1 1 1",
+        position: "0 0 0",
+      },
+      wedding: {
+        src: "https://stagenix-backend.onrender.com/model/perfect_stage_corrected.glb",
+        scale: "1 1 1",
+        position: "0 0 0",
+      },
+      stage: {
+        src: "/assets/stage/stage.glb",
+        scale: "1 1 1",
+        position: "0 0 0",
+      },
+    };
 
-      const modelMap: Record<
-        string,
-        { src: string; scale: string; position: string }
-      > = {
-        pottedplant: {
-          src: "/assets/pottedplant/scene.glb",
-          scale: "1 1 1",
-          position: "0 0 0",
-        },
-        vase: {
-          src: "/assets/vase/scene.glb",
-          scale: "1 1 1",
-          position: "0 0 0",
-        },
-        wedding: {
-          src: "https://stagenix-backend.onrender.com/model/perfect_stage_corrected.glb",
-          scale: "1 1 1",
-          position: "0 0 0",
-        },
-        stage: {
-          src: "/assets/stage/stage.glb",
-          scale: "1 1 1",
-          position: "0 0 0",
-        },
-      };
+    const entityStrings = (objects || [])
+      .filter((o) => modelMap[o.name])
+      .map((o, i) => {
+        const pos = `${o.position[0]} ${o.position[1]} ${o.position[2]}`;
+        const rot = `${o.rotation[0]} ${o.rotation[1]} ${o.rotation[2]}`;
 
-      const entityStrings = (objects || [])
-        .filter((o) => modelMap[o.name])
-        .map((o, i) => {
-          const pos = `${o.position[0]} ${o.position[1]} ${o.position[2]}`;
-          const rot = `${o.rotation[0]} ${o.rotation[1]} ${o.rotation[2]}`;
+        return `<a-entity 
+            id="obj-${i}"
+            gltf-model="#asset-${i}"
+            crossorigin="anonymous"
+            position="${pos}"
+            rotation="${rot}"
+            auto-center-scale
+        ></a-entity>`;
+      })
+      .join("\n");
 
-          return `<a-entity 
-              id="obj-${i}"
-              gltf-model="#asset-${i}"
-              crossorigin="anonymous"
-              position="${pos}"
-              rotation="${rot}"
-              auto-center-scale
-          ></a-entity>`;
-        })
-        .join("\n");
+    const fallbackHTML = `<a-entity position="0 0 -1">
+      <a-text value="No compatible models found" color="#fff" align="center"></a-text>
+    </a-entity>`;
 
-      const fallbackHTML = `<a-entity position="0 0 -1">
-        <a-text value="No compatible models found" color="#fff" align="center"></a-text>
-      </a-entity>`;
-
-      doc.open();
-      doc.write(`<!doctype html>
+    doc.open();
+    doc.write(`<!doctype html>
 <html>
 <head>
 <meta charset="utf-8" />
@@ -80,10 +78,16 @@ export default function ARViewer({ objects }: { objects: StageObject[] }) {
 <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.3.2/aframe/build/aframe-ar.min.js"></script>
 
 <style>
-html,body{margin:0;height:100%;overflow:hidden;background:#000;}
+html,body{
+  margin:0;
+  height:100%;
+  overflow:hidden;
+  background:#000;
+}
 #hint{
  position:absolute;
- left:10px;top:10px;
+ left:10px;
+ top:10px;
  z-index:9999;
  background:rgba(0,0,0,0.65);
  color:#fff;
@@ -119,8 +123,8 @@ AFRAME.registerComponent("auto-center-scale", {
   }
 });
 </script>
-</head>
 
+</head>
 <body>
 
 <div id="hint">Point camera at the Hiro marker</div>
@@ -137,7 +141,12 @@ ${(objects || [])
   .filter((o) => modelMap[o.name])
   .map((o, i) => {
     const m = modelMap[o.name];
-    return `<a-asset-item id="asset-${i}" src="${m.src}" crossorigin="anonymous" response-type="arraybuffer"></a-asset-item>`;
+    return `<a-asset-item 
+      id="asset-${i}" 
+      src="${m.src}" 
+      crossorigin="anonymous" 
+      response-type="arraybuffer">
+    </a-asset-item>`;
   })
   .join("\n")}
 </a-assets>
@@ -172,8 +181,7 @@ setTimeout(()=>{
 
 </body>
 </html>`);
-      doc.close();
-    };
+    doc.close();
   }, [objects]);
 
   return (
