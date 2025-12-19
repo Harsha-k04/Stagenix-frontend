@@ -23,26 +23,14 @@ export default function ARViewer({ objects }: { objects: StageObject[] }) {
       string,
       { src: string; scale: string; position: string }
     > = {
-      pottedplant: {
-        src: "/assets/pottedplant/scene.glb",
-        scale: "1 1 1",
-        position: "0 0 0",
-      },
-      vase: {
-        src: "/assets/vase/scene.glb",
-        scale: "1 1 1",
-        position: "0 0 0",
-      },
+      pottedplant: { src: "/assets/pottedplant/scene.glb", scale: "1 1 1", position: "0 0 0" },
+      vase: { src: "/assets/vase/scene.glb", scale: "1 1 1", position: "0 0 0" },
       wedding: {
         src: "https://stagenix-backend.onrender.com/model/perfect_stage_corrected.glb",
         scale: "1 1 1",
         position: "0 0 0",
       },
-      stage: {
-        src: "/assets/stage/stage.glb",
-        scale: "1 1 1",
-        position: "0 0 0",
-      },
+      stage: { src: "/assets/stage/stage.glb", scale: "1 1 1", position: "0 0 0" },
     };
 
     const entityStrings = (objects || [])
@@ -52,15 +40,14 @@ export default function ARViewer({ objects }: { objects: StageObject[] }) {
         const rot = `${o.rotation[0]} ${o.rotation[1]} ${o.rotation[2]}`;
 
         return `<a-entity 
-            id="obj-${i}"
-            gltf-model="#asset-${i}"
-            crossorigin="anonymous"
-            position="${pos}"
-            
-            <!-- ⭐ FORCE MODEL TO SIT PROPERLY ON MARKER -->
-            rotation="-90 0 0"
+          id="obj-${i}"
+          gltf-model="#asset-${i}"
+          crossorigin="anonymous"
 
-            auto-center-scale
+          position="${pos}"
+          rotation="${rot}"
+
+          auto-center           <!-- ⭐ Same VR logic -->
         ></a-entity>`;
       })
       .join("\n");
@@ -73,8 +60,8 @@ export default function ARViewer({ objects }: { objects: StageObject[] }) {
     doc.write(`<!doctype html>
 <html>
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Stagenix AR</title>
 
 <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
@@ -82,47 +69,32 @@ export default function ARViewer({ objects }: { objects: StageObject[] }) {
 
 <style>
 html,body{
- margin:0;
- height:100%;
- overflow:hidden;
- background:transparent !important;
+ margin:0;height:100%;overflow:hidden;background:transparent!important;
 }
 
 video,#arjs-video,.a-video{
- position:fixed!important;
- top:0!important;
- left:0!important;
- width:100%!important;
- height:100%!important;
- object-fit:cover!important;
- z-index:1!important;
+ position:fixed!important;top:0!important;left:0!important;
+ width:100%!important;height:100%!important;object-fit:cover!important;z-index:1!important;
 }
 
-a-scene{
- z-index:2!important;
- background:transparent!important;
-}
-
+a-scene{z-index:2!important;background:transparent!important;}
 canvas{background:transparent!important;}
 
 #hint{
- position:absolute;
- left:10px;
- top:10px;
- z-index:9999;
- background:rgba(0,0,0,0.65);
- color:#fff;
- padding:8px 10px;
- border-radius:8px;
+ position:absolute;left:10px;top:10px;z-index:9999;
+ background:rgba(0,0,0,.65);color:#fff;padding:8px 10px;border-radius:8px;
 }
 </style>
 
 <script>
-AFRAME.registerComponent("auto-center-scale", {
-  init: function(){
+AFRAME.registerComponent("auto-center", {
+  init: function () {
     this.el.addEventListener("model-loaded", () => {
+      const THREE = window.THREE;
       const obj = this.el.getObject3D("mesh");
-      if(!obj) return;
+      if (!obj || !THREE) return;
+
+      obj.updateMatrixWorld(true);
 
       const box = new THREE.Box3().setFromObject(obj);
       const size = new THREE.Vector3();
@@ -131,16 +103,20 @@ AFRAME.registerComponent("auto-center-scale", {
       box.getSize(size);
       box.getCenter(center);
 
-      obj.position.sub(center);
+      // ⭐ Same VR normalization
+      obj.position.x -= center.x;
+      obj.position.z -= center.z;
       obj.position.y -= box.min.y;
 
-      const maxDim = Math.max(size.x,size.y,size.z);
+      obj.updateMatrixWorld(true);
 
-      const target = 1.8;  // ⭐ slightly bigger + clearer
-      const s = target / maxDim;
-      obj.scale.set(s,s,s);
+      const maxDim = Math.max(size.x, size.y, size.z);
+      const TARGET_SIZE = 4;
+      const scale = TARGET_SIZE / maxDim;
 
-      console.log("AR model normalized");
+      this.el.setAttribute("scale", scale + " " + scale + " " + scale);
+
+      console.log("✔ AR model normalized same as VR");
     });
   }
 });
@@ -154,18 +130,21 @@ AFRAME.registerComponent("auto-center-scale", {
 <a-scene
  embedded
  vr-mode-ui="enabled:false"
-
- renderer="alpha:true; antialias:true; physicallyCorrectLights:true; colorManagement:true; exposure:2.2; toneMapping:ACESFilmic;"
-
+ renderer="
+   alpha:true;
+   antialias:true;
+   physicallyCorrectLights:true;
+   colorManagement:true;
+   toneMapping:ACESFilmicToneMapping;
+   exposure:3.0;
+"
  arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled:false;"
 >
 
-<a-assets timeout="25000">
+<a-assets timeout="30000">
 ${(objects || [])
-  .filter((o) => modelMap[o.name])
-  .map(
-    (o, i) => `<a-asset-item id="asset-${i}" src="${modelMap[o.name].src}" crossorigin="anonymous" response-type="arraybuffer"></a-asset-item>`
-  )
+  .filter(o => modelMap[o.name])
+  .map((o, i) => `<a-asset-item id="asset-${i}" src="${modelMap[o.name].src}" crossorigin="anonymous"></a-asset-item>`)
   .join("\n")}
 </a-assets>
 
@@ -177,10 +156,11 @@ ${(objects || [])
 
 <a-entity camera></a-entity>
 
-<!-- ⭐ MAX BRIGHTNESS LIKE VR -->
-<a-entity light="type: ambient; intensity: 2.2"></a-entity>
-<a-entity light="type: hemisphere; intensity: 2.5; color:#ffffff; groundColor:#999999"></a-entity>
-<a-entity light="type: directional" position="2 6 2" intensity="4.5" castShadow="true"></a-entity>
+<!-- ⭐ EXACT VR LIGHTING -->
+<a-entity light="type: ambient; intensity: 3"></a-entity>
+<a-entity light="type: hemisphere; intensity: 2.5; color: #ffffff; groundColor: #888888"></a-entity>
+<a-entity light="type: directional; intensity: 4" position="6 12 10" castShadow="true"></a-entity>
+<a-entity light="type: point; intensity: 3; distance: 120" position="0 6 10"></a-entity>
 
 </a-scene>
 
