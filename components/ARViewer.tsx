@@ -82,10 +82,10 @@ html,body{
  margin:0;
  height:100%;
  overflow:hidden;
- background:#000;
+ background:transparent !important;
 }
 
-/* ✅ MOST IMPORTANT – force AR.js camera to show */
+/* ✅ Force AR camera to show (TOP layer) */
 video,
 #arjs-video,
 .a-video {
@@ -98,10 +98,15 @@ video,
  z-index: 1 !important;
 }
 
+/* ✅ 3D scene above camera */
 a-scene {
  z-index: 2 !important;
+ background: transparent !important;
 }
 
+canvas {
+ background: transparent !important;
+}
 #hint{
  position:absolute;
  left:10px;
@@ -135,6 +140,7 @@ AFRAME.registerComponent("auto-center-scale", {
       const target = 1.2;
       const s = target / maxDim;
       obj.scale.set(s,s,s);
+
       console.log("AR model normalized");
     });
   }
@@ -149,7 +155,7 @@ AFRAME.registerComponent("auto-center-scale", {
 <a-scene
  embedded
  vr-mode-ui="enabled:false"
- renderer="antialias:true; alpha:true;"
+ renderer="alpha:true; antialias:true;"
  arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled:false;"
 >
 
@@ -206,7 +212,7 @@ setTimeout(()=>{
       ref={iframeRef}
       title="AR Viewer"
       className="w-full h-full border-none rounded-lg"
-      allow="camera *; microphone *; fullscreen *; xr-spatial-tracking *"
+      allow="camera *; microphone *; xr-spatial-tracking *; fullscreen *"
       allowFullScreen
       referrerPolicy="no-referrer"
       sandbox="allow-scripts allow-same-origin allow-pointer-lock allow-forms allow-popups allow-popups-to-escape-sandbox"
