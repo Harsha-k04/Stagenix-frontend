@@ -46,7 +46,12 @@ export default function ARViewer({ objects }: { objects: StageObject[] }) {
 <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.3.2/aframe/build/aframe-ar.min.js"></script>
 
 <style>
-html, body { margin:0; padding:0; overflow:hidden; }
+html, body {
+  margin:0;
+  padding:0;
+  overflow:hidden;
+  background:#000;
+}
 #hint{
  position:fixed;
  top:10px;
@@ -56,11 +61,11 @@ html, body { margin:0; padding:0; overflow:hidden; }
  padding:8px 12px;
  border-radius:10px;
  z-index:9999;
+ font-family:Arial;
 }
 </style>
 
 <script>
-// ---------- MODEL NORMALIZER ----------
 AFRAME.registerComponent("auto-center-scale", {
   init(){
     this.el.addEventListener("model-loaded", () => {
@@ -93,98 +98,9 @@ AFRAME.registerComponent("auto-center-scale", {
 <div id="hint">Checking AR support...</div>
 
 <script>
-(async function(){
 
-  const supportsWebXR = navigator.xr && await navigator.xr.isSessionSupported("immersive-ar");
-
-  if(supportsWebXR){
-    document.body.innerHTML += \`
-    
-<a-scene 
-  xr-mode-ui="enabled: true"
-  webxr="optionalFeatures: hit-test; requiredFeatures: hit-test;"
-  renderer="physicallyCorrectLights: true; colorManagement: true;"
-  embedded
->
-  <a-entity light="type: ambient; intensity: 2"></a-entity>
-  <a-entity light="type: directional; intensity: 4" position="5 10 5"></a-entity>
-
-  <a-camera></a-camera>
-
-  <a-ring id="reticle"
-    visible="false"
-    radius-inner="0.08"
-    radius-outer="0.1"
-    position="0 0 -1"
-    rotation="-90 0 0"
-    color="yellow">
-  </a-ring>
-
-  <a-entity id="modelHolder"></a-entity>
-
-</a-scene>
-
-    \`;
-
-    document.getElementById("hint").innerText = "Move phone to scan surface, tap to place";
-
-    let hitTestSource = null;
-    let localSpace = null;
-    let placed = false;
-
-    const scene = document.querySelector("a-scene");
-    const reticle = document.getElementById("reticle");
-    const holder = document.getElementById("modelHolder");
-
-    scene.renderer.xr.addEventListener("sessionstart", async () => {
-      const session = scene.renderer.xr.getSession();
-      const viewerSpace = await session.requestReferenceSpace("viewer");
-      hitTestSource = await session.requestHitTestSource({ space: viewerSpace });
-      localSpace = await session.requestReferenceSpace("local");
-
-      session.addEventListener("select", () => {
-        if(!placed && reticle.visible){
-          placed = true;
-          holder.setAttribute("gltf-model","${url}");
-          holder.setAttribute("auto-center-scale","");
-          holder.object3D.position.copy(reticle.object3D.position);
-          document.getElementById("hint").innerText = "Placed!";
-        }
-      });
-
-      session.requestAnimationFrame(onXRFrame);
-    });
-
-    function onXRFrame(t, frame){
-      const session = scene.renderer.xr.getSession();
-      session.requestAnimationFrame(onXRFrame);
-
-      if(!hitTestSource || !localSpace) return;
-
-      const hits = frame.getHitTestResults(hitTestSource);
-      if(!hits.length) return;
-
-      const pose = hits[0].getPose(localSpace);
-
-      reticle.object3D.position.set(
-        pose.transform.position.x,
-        pose.transform.position.y,
-        pose.transform.position.z
-      );
-
-      reticle.object3D.quaternion.set(
-        pose.transform.orientation.x,
-        pose.transform.orientation.y,
-        pose.transform.orientation.z,
-        pose.transform.orientation.w
-      );
-
-      reticle.setAttribute("visible", !placed);
-    }
-
-  } else {
-    document.body.innerHTML += \`
-
+function loadMarkerFallback(){
+  document.body.innerHTML += \`
 <div id="hint">Point camera at Hiro marker</div>
 
 <a-scene
@@ -208,9 +124,127 @@ AFRAME.registerComponent("auto-center-scale", {
 <a-entity light="type: directional; intensity: 4" position="3 6 3"></a-entity>
 
 </a-scene>
+  \`;
+}
 
-    \`;
+(async function(){
 
+  if(!navigator.xr){
+    loadMarkerFallback();
+    return;
+  }
+
+  let supports = false;
+
+  try{
+    supports = await navigator.xr.isSessionSupported("immersive-ar");
+  }catch(e){
+    supports = false;
+  }
+
+  if(!supports){
+    loadMarkerFallback();
+    return;
+  }
+
+  // ---- TRY STARTING MARKERLESS ----
+  document.getElementById("hint").innerText = "Starting AR...";
+
+  let failedTimeout = setTimeout(()=>{
+    loadMarkerFallback();
+  },6000);   // if camera doesn't start in 6s -> fallback
+
+  document.body.innerHTML += \`
+<a-scene 
+  xr-mode-ui="enabled: true"
+  webxr="optionalFeatures: hit-test; requiredFeatures: hit-test;"
+  renderer="physicallyCorrectLights: true; colorManagement: true;"
+  embedded
+>
+  <a-entity light="type: ambient; intensity: 2"></a-entity>
+  <a-entity light="type: directional; intensity: 4" position="5 10 5"></a-entity>
+
+  <a-camera></a-camera>
+
+  <a-ring id="reticle"
+    visible="false"
+    radius-inner="0.08"
+    radius-outer="0.1"
+    position="0 0 -1"
+    rotation="-90 0 0"
+    color="yellow">
+  </a-ring>
+
+  <a-entity id="modelHolder"></a-entity>
+
+</a-scene>
+  \`;
+
+  const scene = document.querySelector("a-scene");
+  scene.renderer.xr.addEventListener("sessionstart", ()=>{
+    clearTimeout(failedTimeout);
+    document.getElementById("hint").innerText = "Move phone to scan surface, tap to place";
+  });
+
+  scene.renderer.xr.addEventListener("sessionend", ()=>{
+    loadMarkerFallback();
+  });
+
+  let hitTestSource = null;
+  let localSpace = null;
+  let placed = false;
+
+  const reticle = document.getElementById("reticle");
+  const holder = document.getElementById("modelHolder");
+
+  scene.renderer.xr.addEventListener("sessionstart", async () => {
+    try{
+      const session = scene.renderer.xr.getSession();
+      const viewerSpace = await session.requestReferenceSpace("viewer");
+      hitTestSource = await session.requestHitTestSource({ space: viewerSpace });
+      localSpace = await session.requestReferenceSpace("local");
+
+      session.addEventListener("select", () => {
+        if(!placed && reticle.visible){
+          placed = true;
+          holder.setAttribute("gltf-model","${url}");
+          holder.setAttribute("auto-center-scale","");
+          holder.object3D.position.copy(reticle.object3D.position);
+          document.getElementById("hint").innerText = "Placed!";
+        }
+      });
+
+      session.requestAnimationFrame(onXRFrame);
+    }catch(e){
+      loadMarkerFallback();
+    }
+  });
+
+  function onXRFrame(t, frame){
+    const session = scene.renderer.xr.getSession();
+    session.requestAnimationFrame(onXRFrame);
+
+    if(!hitTestSource || !localSpace) return;
+
+    const hits = frame.getHitTestResults(hitTestSource);
+    if(!hits.length) return;
+
+    const pose = hits[0].getPose(localSpace);
+
+    reticle.object3D.position.set(
+      pose.transform.position.x,
+      pose.transform.position.y,
+      pose.transform.position.z
+    );
+
+    reticle.object3D.quaternion.set(
+      pose.transform.orientation.x,
+      pose.transform.orientation.y,
+      pose.transform.orientation.z,
+      pose.transform.orientation.w
+    );
+
+    reticle.setAttribute("visible", !placed);
   }
 
 })();
@@ -232,7 +266,7 @@ AFRAME.registerComponent("auto-center-scale", {
         width: "100vw",
         height: "100vh",
         border: "none",
-        zIndex: 99999
+        zIndex: 99999,
       }}
       allow="camera *; microphone *; xr-spatial-tracking *; fullscreen *"
       allowFullScreen
