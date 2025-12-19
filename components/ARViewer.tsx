@@ -84,6 +84,13 @@ html,body{
   overflow:hidden;
   background:#000;
 }
+
+/* 🔥 Fix camera black / squished issue */
+html, body, a-scene, video {
+  width:100% !important;
+  height:100% !important;
+}
+
 #hint{
  position:absolute;
  left:10px;
@@ -189,10 +196,10 @@ setTimeout(()=>{
       ref={iframeRef}
       title="AR Viewer"
       className="w-full h-full border-none rounded-lg"
-      allow="camera; microphone; xr-spatial-tracking;"
+      allow="camera *; microphone *; fullscreen *; xr-spatial-tracking *"
       allowFullScreen
       referrerPolicy="no-referrer"
-      sandbox="allow-scripts allow-same-origin allow-pointer-lock allow-forms"
+      sandbox="allow-scripts allow-same-origin allow-pointer-lock allow-forms allow-popups allow-popups-to-escape-sandbox"
     />
   );
 }
