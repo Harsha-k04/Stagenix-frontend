@@ -6,7 +6,6 @@ type StageObject = {
   name: string;
   position: [number, number, number];
   rotation: [number, number, number];
-  glbUrl?: string;
 };
 
 export default function ARViewer({ objects }: { objects: StageObject[] }) {
@@ -24,11 +23,23 @@ export default function ARViewer({ objects }: { objects: StageObject[] }) {
       string,
       { src: string; scale: string; position: string }
     > = {
-      pottedplant: { src: "/assets/pottedplant/scene.glb", scale: "1 1 1", position: "0 0 0" },
-      vase: { src: "/assets/vase/scene.glb", scale: "1 1 1", position: "0 0 0" },
-      stage: { src: "/assets/stage/stage.glb", scale: "1 1 1", position: "0 0 0" },
+      pottedplant: {
+        src: "/assets/pottedplant/scene.glb",
+        scale: "1 1 1",
+        position: "0 0 0",
+      },
+      vase: {
+        src: "/assets/vase/scene.glb",
+        scale: "1 1 1",
+        position: "0 0 0",
+      },
       wedding: {
-        src: "/assets/wedding/wedding.glb",
+        src: "https://stagenix-backend.onrender.com/model/perfect_stage_corrected.glb",
+        scale: "1 1 1",
+        position: "0 0 0",
+      },
+      stage: {
+        src: "/assets/stage/stage.glb",
         scale: "1 1 1",
         position: "0 0 0",
       },
@@ -38,16 +49,22 @@ export default function ARViewer({ objects }: { objects: StageObject[] }) {
       .filter((o) => modelMap[o.name])
       .map((o, i) => {
         const pos = `${o.position[0]} ${o.position[1]} ${o.position[2]}`;
+        const rot = `${o.rotation[0]} ${o.rotation[1]} ${o.rotation[2]}`;
 
-        return `<a-entity 
+        return `<a-entity
           id="obj-${i}"
           gltf-model="#asset-${i}"
           crossorigin="anonymous"
           position="${pos}"
-          auto-ar-fix
+          rotation="${rot}"
+          auto-center-scale
         ></a-entity>`;
       })
       .join("\n");
+
+    const fallbackHTML = `<a-entity position="0 0 -1">
+      <a-text value="No compatible models found" color="#fff" align="center"></a-text>
+    </a-entity>`;
 
     doc.open();
     doc.write(`<!doctype html>
@@ -62,47 +79,47 @@ export default function ARViewer({ objects }: { objects: StageObject[] }) {
 
 <style>
 html,body{
- margin:0;
- height:100%;
- overflow:hidden;
- background:transparent!important;
+  margin:0;
+  height:100%;
+  overflow:hidden;
+  background:transparent!important;
 }
 
-/* Fullscreen real camera */
 video,#arjs-video,.a-video{
- position:fixed!important;
- top:0!important;
- left:0!important;
- width:100%!important;
- height:100%!important;
- object-fit:cover!important;
- z-index:1!important;
+  position:fixed!important;
+  top:0!important;
+  left:0!important;
+  width:100%!important;
+  height:100%!important;
+  object-fit:cover!important;
+  z-index:1!important;
 }
 
-a-scene{z-index:2!important;background:transparent!important;}
+a-scene{
+  z-index:2!important;
+  background:transparent!important;
+}
+
 canvas{background:transparent!important;}
 
 #hint{
- position:absolute;
- left:10px;
- top:10px;
- z-index:9999;
- background:rgba(0,0,0,.65);
- color:#fff;
- padding:8px 10px;
- border-radius:8px;
+  position:absolute;
+  left:10px;
+  top:10px;
+  z-index:9999;
+  background:rgba(0,0,0,0.65);
+  color:#fff;
+  padding:8px 10px;
+  border-radius:8px;
 }
 </style>
 
 <script>
-AFRAME.registerComponent("auto-ar-fix", {
+AFRAME.registerComponent("auto-center-scale", {
   init: function(){
     this.el.addEventListener("model-loaded", () => {
-      const THREE = window.THREE;
       const obj = this.el.getObject3D("mesh");
       if(!obj) return;
-
-      obj.updateMatrixWorld(true);
 
       const box = new THREE.Box3().setFromObject(obj);
       const size = new THREE.Vector3();
@@ -115,58 +132,65 @@ AFRAME.registerComponent("auto-ar-fix", {
       obj.position.y -= box.min.y;
 
       const maxDim = Math.max(size.x,size.y,size.z);
-      const target = 4;
+      const target = 1.2;
       const s = target / maxDim;
       obj.scale.set(s,s,s);
 
-      // ⭐ FORCE STANDING STRAIGHT ALWAYS
-      obj.rotation.x = -Math.PI / 2;
-
-      console.log("AR model normalized + upright");
+      console.log("AR model normalized");
     });
   }
 });
 </script>
 
 </head>
+
 <body>
 
 <div id="hint">Point camera at the Hiro marker</div>
 
 <a-scene
- embedded
- vr-mode-ui="enabled:false"
- renderer="
-   alpha:true;
-   antialias:true;
-   physicallyCorrectLights:true;
-   exposure:3;
-   shadowMapEnabled:false;
-"
- arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled:false;"
+  embedded
+  vr-mode-ui="enabled:false"
+  renderer="alpha:true; antialias:true; physicallyCorrectLights:true; colorManagement:true; exposure:2.8; toneMapping:ACESFilmic;"
+  arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled:false;"
 >
 
-<a-assets timeout="30000">
+<a-assets timeout="25000">
 ${(objects || [])
-  .filter(o => modelMap[o.name])
-  .map((o, i) => `<a-asset-item id="asset-${i}" src="${modelMap[o.name].src}" crossorigin="anonymous"></a-asset-item>`)
+  .filter((o) => modelMap[o.name])
+  .map(
+    (o, i) => `<a-asset-item id="asset-${i}" src="${modelMap[o.name].src}" crossorigin="anonymous" response-type="arraybuffer"></a-asset-item>`
+  )
   .join("\n")}
 </a-assets>
 
 <a-marker preset="hiro" id="hiroMarker">
-  <a-entity>
-    ${entityStrings || ""}
+
+  <!-- ⭐ FIX 1: Rotate whole world to correct orientation -->
+  <a-entity rotation="-90 0 0" position="0 0 0">
+      ${entityStrings || fallbackHTML}
   </a-entity>
+
 </a-marker>
 
 <a-entity camera></a-entity>
 
-<!-- SUPER BRIGHT MODE -->
-<a-entity light="type: ambient; intensity: 4"></a-entity>
-<a-entity light="type: hemisphere; intensity: 3; color:#ffffff; groundColor:#999"></a-entity>
-<a-entity light="type: directional; intensity: 6" position="4 8 4"></a-entity>
+<!-- ⭐ FIX 2: SUPER BRIGHT LIGHTING -->
+<a-entity light="type: ambient; intensity: 2.5"></a-entity>
+<a-entity light="type: hemisphere; intensity: 3; color:#ffffff; groundColor:#aaaaaa"></a-entity>
+<a-entity light="type: directional; intensity: 5; castShadow:true" position="4 8 4"></a-entity>
 
 </a-scene>
+
+<script>
+setTimeout(()=>{
+ const marker = document.getElementById("hiroMarker");
+ if(!marker) return;
+
+ marker.addEventListener("markerFound",()=>{document.getElementById("hint").innerText="Marker detected";});
+ marker.addEventListener("markerLost",()=>{document.getElementById("hint").innerText="Point camera at Hiro marker";});
+},1200);
+</script>
 
 </body>
 </html>`);
@@ -193,4 +217,5 @@ ${(objects || [])
     />
   );
 }
+
 
