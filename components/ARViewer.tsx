@@ -85,28 +85,22 @@ html,body{
  background:transparent !important;
 }
 
-/* Force AR camera full screen */
-video,
-#arjs-video,
-.a-video {
- position: fixed !important;
- top:0 !important;
- left:0 !important;
- width:100% !important;
- height:100% !important;
- object-fit: cover !important;
- z-index: 1 !important;
+video,#arjs-video,.a-video{
+ position:fixed!important;
+ top:0!important;
+ left:0!important;
+ width:100%!important;
+ height:100%!important;
+ object-fit:cover!important;
+ z-index:1!important;
 }
 
-/* 3D scene above */
-a-scene {
- z-index: 2 !important;
- background: transparent !important;
+a-scene{
+ z-index:2!important;
+ background:transparent!important;
 }
 
-canvas {
- background: transparent !important;
-}
+canvas{background:transparent!important;}
 
 #hint{
  position:absolute;
@@ -156,22 +150,16 @@ AFRAME.registerComponent("auto-center-scale", {
 <a-scene
  embedded
  vr-mode-ui="enabled:false"
- renderer="alpha:true; antialias:true;"
+ renderer="alpha:true; antialias:true; physicallyCorrectLights:true; colorManagement:true; exposure:1.7; toneMapping:ACESFilmic;"
  arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled:false;"
 >
 
-<a-assets timeout="20000">
+<a-assets timeout="25000">
 ${(objects || [])
   .filter((o) => modelMap[o.name])
-  .map((o, i) => {
-    const m = modelMap[o.name];
-    return `<a-asset-item 
-      id="asset-${i}" 
-      src="${m.src}" 
-      crossorigin="anonymous" 
-      response-type="arraybuffer">
-    </a-asset-item>`;
-  })
+  .map(
+    (o, i) => `<a-asset-item id="asset-${i}" src="${modelMap[o.name].src}" crossorigin="anonymous" response-type="arraybuffer"></a-asset-item>`
+  )
   .join("\n")}
 </a-assets>
 
@@ -183,8 +171,10 @@ ${(objects || [])
 
 <a-entity camera></a-entity>
 
-<a-entity light="type: hemisphere; intensity: 2.2"></a-entity>
-<a-entity light="type: directional" position="2 4 1" intensity="3"></a-entity>
+<!-- ⭐ FIX: BRIGHT REALISTIC LIGHT -->
+<a-entity light="type: ambient; intensity: 1.8"></a-entity>
+<a-entity light="type: hemisphere; intensity: 2; color:#ffffff; groundColor:#888888"></a-entity>
+<a-entity light="type: directional; intensity: 4; castShadow:true" position="2 6 2"></a-entity>
 
 </a-scene>
 
@@ -193,13 +183,8 @@ setTimeout(()=>{
  const marker=document.getElementById("hiroMarker");
  if(!marker) return;
 
- marker.addEventListener("markerFound",()=>{
-   document.getElementById("hint").innerText="Marker detected";
- });
-
- marker.addEventListener("markerLost",()=>{
-   document.getElementById("hint").innerText="Point camera at Hiro marker";
- });
+ marker.addEventListener("markerFound",()=>{document.getElementById("hint").innerText="Marker detected";});
+ marker.addEventListener("markerLost",()=>{document.getElementById("hint").innerText="Point camera at Hiro marker";});
 },1200);
 </script>
 
