@@ -7,6 +7,8 @@ import MainWorkspace from "@/components/main-workspace";
 import RightPanel from "@/components/right-panel";
 import BottomStatusBar from "@/components/bottom-status-bar";
 import VRViewer from "@/components/VRViewer";
+import ARViewer from "@/components/ARViewer";
+
 
 /* -------------------------------------------
      ⭐ FULL SCREEN WEBXR MARKERLESS AR
@@ -208,10 +210,7 @@ export default function Dashboard() {
         <div className="flex-1 flex flex-col md:flex-row">
           <div className="flex-1 relative min-h-[600px] p-2">
             {viewMode === "ar" ? (
-              <FullScreenAR
-                objects={sceneObjects}
-                onExit={() => setViewMode("perspective")}
-              />
+              <ARViewer objects={sceneObjects} />
             ) : viewMode === "vr" ? (
               <VRViewer objects={sceneObjects} />
             ) : (
